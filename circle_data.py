@@ -25,7 +25,12 @@ import requests
 from matplotlib import font_manager
 
 LLAMA_API = "https://stablecoins.llama.fi/stablecoincharts/all"
+LLAMA_ALL_API = "https://stablecoins.llama.fi/stablecoincharts/all"
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+# USDC 준비금의 대부분을 담고 있는 BlackRock Circle Reserve Fund(USDXX)의 일별 보유내역
+USDXX_CSV = ("https://www.blackrock.com/cash/en-us/products/329365/circle-reserve-fund"
+             "/1464253357814.ajax")
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
@@ -40,6 +45,8 @@ SURFACE = "#fcfcfb"
 GRID = "#e6e5e1"
 
 RATE_COLOR = "#4a3aa7"    # slot 7 violet — 정책금리
+BILL_COLOR = "#2a78d6"    # slot 1 blue   — 국채 직접 보유
+REPO_COLOR = "#eb6834"    # slot 2 orange — 국채 레포
 HIKE_TINT = "#e34948"     # slot 8 red    — 인상기 배경
 CUT_TINT = "#2a78d6"      # slot 1 blue   — 인하기 배경
 
@@ -183,8 +190,10 @@ def time_axis(ax) -> None:
 
 
 def money_formatter(peak: float):
+    """축 눈금 포맷. 범위가 좁으면 소수 한 자리를 써서 눈금이 중복되지 않게 한다."""
     div, suffix = unit_for(peak)
-    return plt.FuncFormatter(lambda v, _: f"${v / div:,.0f}{suffix}")
+    prec = 0 if peak / div >= 10 else 1
+    return plt.FuncFormatter(lambda v, _: f"${v / div:,.{prec}f}{suffix}")
 
 
 def credit(fig, last: datetime, sources: str, x: float = 0.10) -> None:
@@ -194,3 +203,71 @@ def credit(fig, last: datetime, sources: str, x: float = 0.10) -> None:
 
 def parse_date(text: str) -> datetime:
     return datetime.strptime(text, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+
+
+# --------------------------------------------------------- 준비금 (USDXX)
+
+@dataclass(frozen=True)
+class Holding:
+    description: str
+    asset_type: str       # 원문 그대로
+    is_repo: bool
+    market_value: float
+    maturity: datetime
+
+
+def fetch_reserves(refresh: bool = False) -> tuple[datetime, list[Holding]]:
+    """(기준일, 보유내역) — BlackRock이 매일 공시하는 USDXX 포트폴리오.
+
+    CUSIP 칼럼은 제공되지 않는다. 국채는 전부 'TREASURY BILL' 로만 표기되고
+    만기일·액면·시장가치가 붙는다.
+    """
+    def go():
+        r = requests.get(USDXX_CSV, timeout=30, headers={"User-Agent": UA},
+                         params={"fileType": "csv", "fileName": "USDXX_holdings",
+                                 "dataType": "fund"})
+        r.raise_for_status()
+        return r.text
+
+    text = _cached("usdxx_holdings", go, refresh, binary_text=True)
+    rows = list(csv.reader(io.StringIO(text.lstrip("\ufeff"))))
+
+    as_of = None
+    for row in rows:
+        if row and row[0].startswith("Fund Holdings as of") and len(row) > 1:
+            as_of = datetime.strptime(row[1].strip(), "%d-%b-%Y").replace(tzinfo=timezone.utc)
+            break
+
+    header = next(i for i, r in enumerate(rows) if r and r[0] == "Position Description")
+    holdings: list[Holding] = []
+    for row in rows[header + 1:]:
+        if len(row) < 6 or not row[0].strip():
+            continue
+        asset_type = row[1].strip()
+        holdings.append(Holding(
+            description=row[0].strip(),
+            asset_type=asset_type,
+            is_repo="Repurchase" in asset_type,
+            market_value=float(row[4].replace(",", "")),
+            maturity=datetime.strptime(row[5].strip(), "%d-%b-%Y").replace(tzinfo=timezone.utc),
+        ))
+    if as_of is None:
+        as_of = min(h.maturity for h in holdings)
+    return as_of, holdings
+
+
+def fetch_market(refresh: bool = False) -> Series:
+    """전체 스테이블코인 시장 규모 (USD 페그 기준) — 점유율 분모."""
+    def go():
+        r = requests.get(LLAMA_ALL_API, timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    out: Series = []
+    for row in _cached("all_stablecoins", go, refresh):
+        value = (row.get("totalCirculatingUSD") or {}).get("peggedUSD")
+        if not value:
+            continue
+        out.append((datetime.fromtimestamp(int(row["date"]), tz=timezone.utc), float(value)))
+    out.sort(key=lambda p: p[0])
+    return out

@@ -11,6 +11,8 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,6 +33,14 @@ FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 USDXX_CSV = ("https://www.blackrock.com/cash/en-us/products/329365/circle-reserve-fund"
              "/1464253357814.ajax")
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+
+# SEC는 요청마다 연락처가 담긴 User-Agent를 요구한다. 환경변수로 본인 것을 넣을 것.
+#   export SEC_USER_AGENT="이름 you@example.com"
+SEC_UA = os.environ.get("SEC_USER_AGENT", "Circle-Revenue-Structure research@example.com")
+SEC_CIK = "0001876042"  # Circle Internet Group, Inc.
+SEC_SUBMISSIONS = f"https://data.sec.gov/submissions/CIK{SEC_CIK}.json"
+SEC_CONCEPT = "https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{tag}.json"
+SEC_ARCHIVE = "https://www.sec.gov/Archives/edgar/data/1876042"
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
@@ -271,3 +281,135 @@ def fetch_market(refresh: bool = False) -> Series:
         out.append((datetime.fromtimestamp(int(row["date"]), tz=timezone.utc), float(value)))
     out.sort(key=lambda p: p[0])
     return out
+
+
+# ------------------------------------------------------- 단기금리 (수익률 대리)
+
+def fetch_short_rate(series_id: str = "DTB3", refresh: bool = False) -> Series:
+    """FRED 금리 시계열. 기본값 DTB3(3개월 국채)는 준비금 수익률에 가장 가깝다."""
+    def go():
+        r = requests.get(FRED_CSV, params={"id": series_id}, timeout=30)
+        r.raise_for_status()
+        return r.text
+
+    out: Series = []
+    for row in csv.DictReader(io.StringIO(_cached(f"fred_{series_id}", go, refresh, True))):
+        raw = (row.get(series_id) or "").strip()
+        if raw in ("", "."):
+            continue
+        out.append((datetime.strptime(row["observation_date"], "%Y-%m-%d")
+                    .replace(tzinfo=timezone.utc), float(raw)))
+    out.sort(key=lambda p: p[0])
+    return out
+
+
+# ------------------------------------------------------------- SEC EDGAR
+
+Quarter = tuple[int, int]
+
+
+def quarter_of(day: datetime) -> Quarter:
+    return day.year, (day.month - 1) // 3 + 1
+
+
+def _sec_get(url: str) -> str:
+    r = requests.get(url, timeout=40, headers={"User-Agent": SEC_UA})
+    r.raise_for_status()
+    return r.text
+
+
+QUARTER_ENDS = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
+
+
+def quarterly_from_periods(periods: dict[tuple[str, str], float],
+                           derived: set | None = None) -> dict[Quarter, float]:
+    """(시작일, 종료일) -> 값 을 분기 단독 값으로 정리한다.
+
+    10-K는 분기를 따로 태깅하지 않고 연간만 싣는 경우가 많다. 그럴 때는
+    연초부터의 누적 기간 둘을 빼서 해당 분기를 복원한다 (연간 - 9개월 = 4분기).
+    """
+    out: dict[Quarter, float] = {}
+    for (start, end), value in periods.items():
+        days = (datetime.fromisoformat(end) - datetime.fromisoformat(start)).days
+        if 80 <= days <= 95:
+            out[quarter_of(datetime.fromisoformat(start).replace(tzinfo=timezone.utc))] = value
+
+    cumulative = {(start[:4], end): v for (start, end), v in periods.items()
+                  if start.endswith("-01-01")}
+    for (year, end), value in cumulative.items():
+        for q in (2, 3, 4):
+            if end != f"{year}-{QUARTER_ENDS[q]}":
+                continue
+            prior = cumulative.get((year, f"{year}-{QUARTER_ENDS[q - 1]}"))
+            key = (int(year), q)
+            if prior is not None and key not in out:
+                out[key] = value - prior
+                if derived is not None:
+                    derived.add(key)
+    return out
+
+
+def fetch_reported_revenue(refresh: bool = False,
+                           derived: set | None = None) -> dict[Quarter, float]:
+    """공시 총매출(준비금 수익 + 기타 매출), 분기 단위.
+
+    companyfacts API의 표준 태그라 바로 받을 수 있다.
+    """
+    def go():
+        return json.loads(_sec_get(SEC_CONCEPT.format(cik=SEC_CIK, tag="Revenues")))
+
+    periods = {}
+    for u in _cached("sec_revenues", go, refresh)["units"]["USD"]:
+        if u.get("form") in ("10-Q", "10-K") and u.get("start"):
+            periods[(u["start"], u["end"])] = float(u["val"])
+    return quarterly_from_periods(periods, derived)
+
+
+def _parse_instance(xml: str, tags: tuple[str, ...]) -> dict[tuple[str, str], dict]:
+    """XBRL 인스턴스에서 (시작일, 종료일) -> {태그: 값}. 세그먼트 분해분은 제외한다."""
+    contexts = {}
+    for m in re.finditer(r'<(?:\w+:)?context id="([^"]+)"(.*?)</(?:\w+:)?context>', xml, re.S):
+        body = m.group(2)
+        start = re.search(r'<(?:\w+:)?startDate>([\d-]+)<', body)
+        end = re.search(r'<(?:\w+:)?endDate>([\d-]+)<', body)
+        if start and end and not re.search(r'<(?:\w+:)?segment>', body):
+            contexts[m.group(1)] = (start.group(1), end.group(1))
+
+    found: dict[tuple[str, str], dict] = {}
+    for tag in tags:
+        for m in re.finditer(rf'<{tag}\b[^>]*contextRef="([^"]+)"[^>]*>([-\d.]+)</{tag}>', xml):
+            ref = m.group(1)
+            if ref in contexts:
+                found.setdefault(contexts[ref], {})[tag.split(":")[-1]] = float(m.group(2))
+    return found
+
+
+def fetch_distribution_costs(refresh: bool = False,
+                             derived: set | None = None) -> dict[Quarter, float]:
+    """분기별 유통·거래비용.
+
+    companyfacts API에는 없다. 회사 확장 태그(crcl:...)라서 각 10-Q/10-K의
+    XBRL 인스턴스를 직접 받아 파싱해야 한다.
+    """
+    def go():
+        recent = json.loads(_sec_get(SEC_SUBMISSIONS))["filings"]["recent"]
+        result: dict[str, float] = {}
+        for form, report_date, accession in zip(recent["form"], recent["reportDate"],
+                                                recent["accessionNumber"]):
+            if form not in ("10-Q", "10-K"):
+                continue
+            acc = accession.replace("-", "")
+            doc = f"crcl-{report_date.replace('-', '')}"
+            try:
+                xml = _sec_get(f"{SEC_ARCHIVE}/{acc}/{doc}_htm.xml")
+            except requests.HTTPError:
+                continue
+            for (start, end), vals in _parse_instance(
+                    xml, ("crcl:DistributionTransactionAndOtherCosts",)).items():
+                # 분기·누적을 모두 담아둔다. 분기 복원은 아래에서 한다
+                result[f"{start}|{end}"] = vals["DistributionTransactionAndOtherCosts"]
+            time.sleep(0.4)  # SEC 요청 간격
+        return result
+
+    raw = _cached("sec_distribution_costs_v2", go, refresh)
+    return quarterly_from_periods({tuple(k.split("|")): v for k, v in raw.items()}, derived)

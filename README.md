@@ -58,6 +58,51 @@ FOMC 발표일을 하드코딩하지 않는다. 각 날짜를 중심으로 앞�
 0.15%p를 넘으면 방향성 있는 레짐으로 보고, 60일 미만 구간은 버린다.
 데이터가 갱신되면 구간도 따라 움직인다.
 
+## 매출 추정 모델
+
+```bash
+./.venv/bin/python revenue_model.py --scenario
+```
+
+![매출 모델](assets/revenue_model.png)
+
+```
+준비금 수익 = 분기 평균 USDC 발행잔액 x 단기금리 x 기간
+유통비용    = 매출 x 비율        (과거는 공시 실제값, 진행 분기는 최근 평균 가정)
+RLDC        = 매출 - 유통비용    (Circle이 실제로 갖는 몫)
+```
+
+9개 분기를 공시와 대조한 결과 **절대오차 평균 3.6%**, 그리고 항상 과소 추정이다.
+편향이 일정한 이유는 명확하다 — 공시 매출에는 준비금 수익 외에 기타 매출
+(구독·거래 수수료)이 4% 정도 섞여 있는데 모델은 그걸 빼고 계산한다.
+
+### 유통비용은 왜 모델링하지 않는가
+
+Coinbase는 자기 플랫폼에 올라온 USDC의 준비금 수익을 **100%**, 그 밖에서
+발생한 수익을 **50%** 가져간다. 그래서 유통비용을 결정하는 변수는 "Coinbase
+플랫폼 내 USDC 잔액"인데, 이건 체인에 찍히지 않고 Circle 공시에만 나온다.
+온체인 데이터로는 원리적으로 추정이 불가능하다.
+
+대신 비율이 매우 안정적이다 (최근 6분기 58.6~61.8%). 그래서 과거 분기는
+공시에서 읽어오고, 아직 공시가 없는 진행 중 분기만 직전 4분기 평균을 쓴다.
+
+### 분기 복원
+
+10-K는 4분기를 따로 태깅하지 않고 연간만 싣는다. 이때는 `연간 - 9개월 누적`
+으로 복원한다. 복원한 분기는 출력에 표시되며, 일회성 지급이 섞일 수 있어
+진행 분기의 비율 가정 기준에서는 제외한다.
+
+### 시나리오
+
+`--scenario`는 금리와 발행잔액을 흔들었을 때의 연간 매출과 Circle 몫을 낸다.
+
+```
+금리 +25bp 단독 효과: 매출 +183M  ->  Circle 몫 +73M
+                     (차액 110M은 유통비용으로 유출)
+```
+
+금리 인상 효과의 약 60%가 Coinbase로 가고 Circle에는 40%만 남는다는 뜻이다.
+
 ## 준비금 구성과 만기 구조
 
 Circle 매출은 준비금 운용수익이고, 그 수익이 금리를 얼마나 빨리 따라가는지는
@@ -138,6 +183,14 @@ python3 -m venv .venv
 | `--no-bands` | 레짐 배경 띠 끄기 | 꺼짐 |
 | `--refresh` | 캐시 무시 | 꺼짐 |
 
+### revenue_model.py
+
+| 옵션 | 설명 | 기본값 |
+|---|---|---|
+| `--rate-series` | FRED 금리 시계열 | `DTB3` (3개월 국채) |
+| `--scenario` | 금리/잔액 시나리오 표 출력 | 꺼짐 |
+| `--refresh` | 캐시 무시 | 꺼짐 |
+
 ### reserves.py / market_share.py
 
 | 옵션 | 설명 |
@@ -171,6 +224,17 @@ EURC는 유로 페그라 원화 단위가 다르므로, 비교 가능하도록 A
 | 발행잔액 · 시장 규모 | [DefiLlama Stablecoins API](https://defillama.com/stablecoins) | 불필요 |
 | 기준금리 | [FRED DFF](https://fred.stlouisfed.org/series/DFF) (연방기금 실효금리, 일별) | 불필요 |
 | 준비금 보유내역 | [BlackRock USDXX](https://www.blackrock.com/cash/en-us/products/329365/circle-reserve-fund) (일별 공시) | 불필요 |
+| 공시 실적 | [SEC EDGAR](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001876042) (CIK 1876042) | 불필요* |
+
+\* SEC는 요청마다 연락처가 담긴 User-Agent를 요구한다. 본인 것으로 설정할 것:
+
+```bash
+export SEC_USER_AGENT="이름 you@example.com"
+```
+
+총매출은 companyfacts API의 표준 태그로 바로 받을 수 있지만, 유통비용은
+회사 확장 태그(`crcl:DistributionTransactionAndOtherCosts`)라 각 10-Q/10-K의
+XBRL 인스턴스를 직접 받아 파싱한다.
 
 응답은 `data/`에 캐시하며 12시간 지나면 자동 갱신한다.
 
@@ -183,6 +247,7 @@ EURC는 유로 페그라 원화 단위가 다르므로, 비교 가능하도록 A
 | `rate_overlay.py` | 발행잔액 vs 기준금리 차트 |
 | `reserves.py` | 준비금 구성·만기 구조 차트 |
 | `market_share.py` | 시장 점유율 차트 |
+| `revenue_model.py` | 매출 추정 모델 + 공시 검증 + 시나리오 |
 
 ## 로드맵
 
@@ -190,4 +255,4 @@ EURC는 유로 페그라 원화 단위가 다르므로, 비교 가능하도록 A
 - [x] 기준금리 오버레이 — 금리와 발행잔액의 관계 검증 (대조군 포함)
 - [x] 준비금 구성 (BlackRock USDXX 보유 국채, 만기 사다리)
 - [x] USDT 대비 점유율 추이
-- [ ] 준비금 운용수익 추정 모델
+- [x] 준비금 운용수익 추정 모델 (공시 검증 + 시나리오)

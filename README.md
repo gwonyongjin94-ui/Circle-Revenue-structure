@@ -138,6 +138,37 @@ Binance 건이다.
 
 금리 인상 효과의 약 60%가 Coinbase로 가고 Circle에는 40%만 남는다는 뜻이다.
 
+## 주가 vs 매출
+
+```bash
+./.venv/bin/python price_vs_revenue.py
+```
+
+![주가 vs 매출](assets/price_vs_revenue.png)
+
+CRCL은 2025년 6월 상장 후 3주 만에 $263까지 갔다가 2026년 2월 $50까지 빠졌다.
+고점 대비 −68%. 그런데 같은 기간 매출은 계속 늘었다.
+
+| | 2025Q2 | 2026Q3 | 변화 |
+|---|---|---|---|
+| TTM 매출 | $2.1B | $2.9B | **+37%** |
+| 시가총액 | $41B | $22B | **−48%** |
+| 시총/TTM 매출 | 19.5x | 7.5x | **−62%** |
+
+**주가 하락은 실적 악화가 아니라 밸류에이션 조정이다.** 배수가 19.5배에서
+7.5배로 내려앉았고, 2026Q1 이후로는 6.5~7.8배 사이에서 안정돼 있다.
+
+다만 매출 증가율 자체는 둔화 중이다 — 전년비 +77%(2025Q4) → +20%(2026Q1)
+→ +7%(2026Q2) → −2%(2026Q3 추정). 금리 인하가 준비금 수익률을 깎았기 때문이고,
+이번 인상 사이클이 여기에 어떻게 작용할지가 `revenue_model.py --scenario`의
+질문이다.
+
+### 시가총액 계산 주의
+
+시점 주식수(각 공시 표지의 발행주식수, 클래스 합산)를 쓴다. 가중평균
+희석주식수를 쓰면 상장 분기에 상장 전 기간이 섞여 실제의 절반 이하로 나온다
+(2025Q2: 가중평균 107.5M vs 표지 229.4M).
+
 ## 유통비용 상대방별 구성
 
 ```bash
@@ -289,6 +320,7 @@ EURC는 유로 페그라 원화 단위가 다르므로, 비교 가능하도록 A
 | 기준금리 | [FRED DFF](https://fred.stlouisfed.org/series/DFF) (연방기금 실효금리, 일별) | 불필요 |
 | 준비금 보유내역 | [BlackRock USDXX](https://www.blackrock.com/cash/en-us/products/329365/circle-reserve-fund) (일별 공시) | 불필요 |
 | 공시 실적 | [SEC EDGAR](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001876042) (CIK 1876042) | 불필요* |
+| 주가 | Yahoo Finance (CRCL) | 불필요 |
 
 \* SEC는 요청마다 연락처가 담긴 User-Agent를 요구한다. 본인 것으로 설정할 것:
 
@@ -315,6 +347,7 @@ export SEC_USER_AGENT="이름 you@example.com"
 | `market_share.py` | 시장 점유율 차트 |
 | `revenue_model.py` | 매출 추정 모델 + 공시 검증 + 시나리오 |
 | `distribution_costs.py` | 유통비용 상대방별 구성과 실효율 |
+| `price_vs_revenue.py` | 주가·시가총액 배수 vs 매출 |
 
 ## 로드맵
 
@@ -323,3 +356,5 @@ export SEC_USER_AGENT="이름 you@example.com"
 - [x] 준비금 구성 (BlackRock USDXX 보유 국채, 만기 사다리)
 - [x] USDT 대비 점유율 추이
 - [x] 준비금 운용수익 추정 모델 (공시 검증 + 시나리오)
+- [x] 유통비용 상대방별 분해
+- [x] 주가 vs 매출 비교

@@ -283,6 +283,81 @@ def fetch_market(refresh: bool = False) -> Series:
     return out
 
 
+# ------------------------------------------------------------- 주가 · 주식수
+
+YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+TICKER = "CRCL"   # Circle Internet Group, 2025년 6월 상장
+
+
+def fetch_price(ticker: str = TICKER, refresh: bool = False) -> Series:
+    """(날짜, 종가) 일별 시계열."""
+    def go():
+        r = requests.get(YAHOO_CHART.format(ticker=ticker), timeout=30,
+                         headers={"User-Agent": UA}, params={"range": "5y", "interval": "1d"})
+        r.raise_for_status()
+        return r.json()
+
+    payload = _cached(f"price_{ticker.lower()}", go, refresh)
+    result = payload["chart"]["result"][0]
+    closes = result["indicators"]["quote"][0]["close"]
+    out: Series = []
+    for stamp, close in zip(result["timestamp"], closes):
+        if close is None:
+            continue   # 거래 정지일 등
+        out.append((datetime.fromtimestamp(int(stamp), tz=timezone.utc), float(close)))
+    out.sort(key=lambda p: p[0])
+    return out
+
+
+def fetch_shares_outstanding(refresh: bool = False) -> Series:
+    """(공시일, 발행주식수) — 각 10-Q/10-K 표지의 시점 주식수, 클래스 합산.
+
+    시가총액에는 기간 가중평균이 아니라 시점 주식수를 써야 한다. 상장 분기의
+    가중평균은 상장 전 기간이 섞여 실제의 절반 이하로 나온다.
+    """
+    def go():
+        recent = json.loads(_sec_get(SEC_SUBMISSIONS))["filings"]["recent"]
+        out: dict[str, float] = {}
+        for form, report, filed, accession in zip(
+                recent["form"], recent["reportDate"], recent["filingDate"],
+                recent["accessionNumber"]):
+            if form not in ("10-Q", "10-K"):
+                continue
+            acc = accession.replace("-", "")
+            doc = f"crcl-{report.replace('-', '')}"
+            try:
+                xml = _sec_get(f"{SEC_ARCHIVE}/{acc}/{doc}_htm.xml")
+            except requests.HTTPError:
+                continue
+            # 표지에는 클래스별로 따로 실린다. 전부 더해야 총 발행주식수가 된다
+            total = sum(float(m.group(1)) for m in re.finditer(
+                r'<dei:EntityCommonStockSharesOutstanding[^>]*>([\d.]+)<', xml))
+            if total:
+                out[filed] = total
+            time.sleep(0.4)
+        return out
+
+    raw = _cached("sec_shares_outstanding", go, refresh)
+    return sorted((datetime.fromisoformat(k).replace(tzinfo=timezone.utc), v)
+                  for k, v in raw.items())
+
+
+def fetch_filing_dates(refresh: bool = False) -> dict[Quarter, datetime]:
+    """분기별 10-Q/10-K 제출일. 실적이 시장에 공개된 시점의 근사값."""
+    def go():
+        recent = json.loads(_sec_get(SEC_SUBMISSIONS))["filings"]["recent"]
+        return {report: filed for form, report, filed
+                in zip(recent["form"], recent["reportDate"], recent["filingDate"])
+                if form in ("10-Q", "10-K")}
+
+    out = {}
+    for report, filed in _cached("sec_filing_dates", go, refresh).items():
+        end = datetime.fromisoformat(report).replace(tzinfo=timezone.utc)
+        out[(end.year, (end.month - 1) // 3 + 1)] = \
+            datetime.fromisoformat(filed).replace(tzinfo=timezone.utc)
+    return out
+
+
 # ------------------------------------------------------- 단기금리 (수익률 대리)
 
 def fetch_short_rate(series_id: str = "DTB3", refresh: bool = False) -> Series:
@@ -321,13 +396,14 @@ def _sec_get(url: str) -> str:
 QUARTER_ENDS = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
 
 
-def _concept_periods(cache_key: str, tag: str, refresh: bool) -> dict[tuple[str, str], float]:
+def _concept_periods(cache_key: str, tag: str, refresh: bool,
+                     unit: str = "USD") -> dict[tuple[str, str], float]:
     """companyfacts의 표준 태그 하나를 (시작일, 종료일) -> 값 으로 정리한다."""
     def go():
         return json.loads(_sec_get(SEC_CONCEPT.format(cik=SEC_CIK, tag=tag)))
 
     out = {}
-    for u in _cached(cache_key, go, refresh)["units"]["USD"]:
+    for u in _cached(cache_key, go, refresh)["units"][unit]:
         if u.get("form") in ("10-Q", "10-K") and u.get("start"):
             out[(u["start"], u["end"])] = float(u["val"])
     return out
@@ -340,7 +416,8 @@ def annual_from_periods(periods: dict[tuple[str, str], float]) -> dict[int, floa
 
 
 def quarterly_from_periods(periods: dict[tuple[str, str], float],
-                           derived: set | None = None) -> dict[Quarter, float]:
+                           derived: set | None = None,
+                           subtract: bool = True) -> dict[Quarter, float]:
     """(시작일, 종료일) -> 값 을 분기 단독 값으로 정리한다.
 
     10-K는 분기를 따로 태깅하지 않고 연간만 싣는 경우가 많다. 그럴 때는
@@ -351,6 +428,9 @@ def quarterly_from_periods(periods: dict[tuple[str, str], float],
         days = (datetime.fromisoformat(end) - datetime.fromisoformat(start)).days
         if 80 <= days <= 95:
             out[quarter_of(datetime.fromisoformat(start).replace(tzinfo=timezone.utc))] = value
+
+    if not subtract:
+        return out   # 가중평균처럼 차감이 성립하지 않는 지표
 
     cumulative = {(start[:4], end): v for (start, end), v in periods.items()
                   if start.endswith("-01-01")}

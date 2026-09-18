@@ -86,6 +86,23 @@ Coinbase는 자기 플랫폼에 올라온 USDC의 준비금 수익을 **100%**, 
 대신 비율이 매우 안정적이다 (최근 6분기 58.6~61.8%). 그래서 과거 분기는
 공시에서 읽어오고, 아직 공시가 없는 진행 중 분기만 직전 4분기 평균을 쓴다.
 
+### 일회성 항목 주의
+
+2024Q4 유통비중이 70.0%로 다른 분기(57~62%)보다 8%p 넘게 튄다. 원인은
+Circle FY2025 10-K에 있다.
+
+> In November 2024, we entered into an agreement (the "November Binance
+> Agreement") with Binance... we paid Binance a **$60.3 million one-time
+> upfront fee** and agreed to pay monthly incentive fees based on USDC
+> balances held on Binance's platform and in its treasury.
+
+이 선급금을 빼면 56.1%로 인접 분기 수준이다. 참고로 FY2024 유통비용
+$1,017.4M 중 Coinbase가 $924.5M(90.9%)이고, 나머지 $92.9M의 대부분이 이
+Binance 건이다.
+
+`ONE_OFF_COSTS`에 등록해두어 표와 차트에 함께 표시되며, 진행 분기의 비율
+가정 기준에서는 제외한다.
+
 ### 분기 복원
 
 10-K는 4분기를 따로 태깅하지 않고 연간만 싣는다. 이때는 `연간 - 9개월 누적`

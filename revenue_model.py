@@ -35,6 +35,14 @@ RLDC_COLOR = "#2a78d6"        # slot 1 blue   — Circle 몫
 DIST_COLOR = "#eb6834"        # slot 2 orange — 유통비용
 TRAILING_QUARTERS = 4         # 진행 분기 유통비용 비율을 뽑을 구간
 
+# 공시에서 확인한 일회성 유통비용. 비율을 왜곡하므로 별도로 표시한다.
+# 출처: Circle FY2025 10-K — "In November 2024, we entered into an agreement
+# (the 'November Binance Agreement') with Binance... we paid Binance a
+# $60.3 million one-time upfront fee"
+ONE_OFF_COSTS: dict[cd.Quarter, tuple[float, str]] = {
+    (2024, 4): (60.3e6, "Binance 일회성 선급금 (2024년 11월 계약)"),
+}
+
 
 @dataclass
 class QuarterResult:
@@ -66,6 +74,16 @@ class QuarterResult:
         return self.revenue - self.dist_amount
 
     @property
+    def one_off(self) -> tuple[float, str] | None:
+        return ONE_OFF_COSTS.get(self.quarter)
+
+    @property
+    def underlying_ratio(self) -> float:
+        """일회성 항목을 뺀 경상 유통비용 비율."""
+        amount = self.one_off[0] if self.one_off else 0.0
+        return (self.dist_amount - amount) / self.revenue
+
+    @property
     def error(self) -> float | None:
         if self.reported is None:
             return None
@@ -89,7 +107,8 @@ def build(supply, rates, reported, distribution, derived=()) -> list[QuarterResu
         by_q_rate.setdefault(cd.quarter_of(day), []).append(value)
 
     # 유통비용 비율: 공시가 있는 최근 분기들의 평균을 진행 분기에 적용한다
-    known = sorted(q for q in distribution if q in reported and q not in derived)
+    known = sorted(q for q in distribution
+                   if q in reported and q not in derived and q not in ONE_OFF_COSTS)
     recent = known[-TRAILING_QUARTERS:]
     fallback = (sum(distribution[q] / reported[q] for q in recent) / len(recent)
                 if recent else 0.0)
@@ -214,6 +233,15 @@ def plot(results, out_path):
             ax_rev.annotate("추정", xy=(x, r.revenue), xytext=(0, 22),
                             textcoords="offset points", fontsize=8.5,
                             color=cd.INK_MUTED, ha="center", va="bottom", zorder=6)
+        if r.one_off:
+            # 일회성 항목이 낀 분기는 경상 수준을 유통비용 영역 안에 함께 표시한다
+            # 막대 폭 안에 들어가도록 짧게 — 상세는 표 각주에 있다
+            ax_rev.annotate(f"일회성 {cd.human(r.one_off[0])}\n"
+                            f"제외 시 {r.underlying_ratio * 100:.0f}%",
+                            xy=(x, r.rldc + r.dist_amount / 2), xytext=(0, 0),
+                            textcoords="offset points", fontsize=8.5, color="#ffffff",
+                            fontweight="bold", ha="center", va="center",
+                            linespacing=1.5, zorder=6)
 
     # --- 아래: 모델 오차 -------------------------------------------------
     cd.style_axes(ax_err)
@@ -283,6 +311,13 @@ def main(argv=None) -> int:
               f"{cd.human(r.modeled):>10}{rep:>10}{err:>8}"
               f"{cd.human(r.dist_amount):>11}{r.dist_ratio * 100:6.1f}%"
               f"{cd.human(r.rldc):>10}{tail}")
+
+    flagged = [r for r in shown if r.one_off]
+    for r in flagged:
+        amount, note = r.one_off
+        print(f"\n  * {r.quarter[0]}Q{r.quarter[1]} 유통비중 {r.dist_ratio * 100:.1f}%에는 "
+              f"{note} {cd.human(amount)}이 포함돼 있다.\n"
+              f"    이를 빼면 {r.underlying_ratio * 100:.1f}%로 인접 분기 수준이 된다.")
 
     errors = [r.error for r in shown if r.error is not None]
     if errors:

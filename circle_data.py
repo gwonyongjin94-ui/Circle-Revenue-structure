@@ -321,6 +321,24 @@ def _sec_get(url: str) -> str:
 QUARTER_ENDS = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
 
 
+def _concept_periods(cache_key: str, tag: str, refresh: bool) -> dict[tuple[str, str], float]:
+    """companyfacts의 표준 태그 하나를 (시작일, 종료일) -> 값 으로 정리한다."""
+    def go():
+        return json.loads(_sec_get(SEC_CONCEPT.format(cik=SEC_CIK, tag=tag)))
+
+    out = {}
+    for u in _cached(cache_key, go, refresh)["units"]["USD"]:
+        if u.get("form") in ("10-Q", "10-K") and u.get("start"):
+            out[(u["start"], u["end"])] = float(u["val"])
+    return out
+
+
+def annual_from_periods(periods: dict[tuple[str, str], float]) -> dict[int, float]:
+    """연간(1월 1일~12월 31일) 값만 뽑는다. 분기 4개를 합치면 결측인 해가 빠진다."""
+    return {int(start[:4]): value for (start, end), value in periods.items()
+            if start.endswith("-01-01") and end.endswith("-12-31")}
+
+
 def quarterly_from_periods(periods: dict[tuple[str, str], float],
                            derived: set | None = None) -> dict[Quarter, float]:
     """(시작일, 종료일) -> 값 을 분기 단독 값으로 정리한다.
@@ -355,14 +373,32 @@ def fetch_reported_revenue(refresh: bool = False,
 
     companyfacts API의 표준 태그라 바로 받을 수 있다.
     """
-    def go():
-        return json.loads(_sec_get(SEC_CONCEPT.format(cik=SEC_CIK, tag="Revenues")))
+    return quarterly_from_periods(
+        _concept_periods("sec_revenues", "Revenues", refresh), derived)
 
-    periods = {}
-    for u in _cached("sec_revenues", go, refresh)["units"]["USD"]:
-        if u.get("form") in ("10-Q", "10-K") and u.get("start"):
-            periods[(u["start"], u["end"])] = float(u["val"])
-    return quarterly_from_periods(periods, derived)
+
+def fetch_reserve_income(refresh: bool = False,
+                        derived: set | None = None) -> dict[Quarter, float]:
+    """공시 준비금 수익, 분기 단위.
+
+    Circle 손익계산서의 "Reserve income" 줄. 표준 태그
+    us-gaap:InterestAndDividendIncomeOperating 로 태깅돼 companyfacts에서 받는다.
+    유통비용 계약이 걸리는 대상이 총매출이 아니라 이 항목이다.
+    """
+    return quarterly_from_periods(_reserve_periods(refresh), derived)
+
+
+def _reserve_periods(refresh: bool = False) -> dict[tuple[str, str], float]:
+    return _concept_periods("sec_reserve_income",
+                            "InterestAndDividendIncomeOperating", refresh)
+
+
+def fetch_annual_reserve_income(refresh: bool = False) -> dict[int, float]:
+    return annual_from_periods(_reserve_periods(refresh))
+
+
+def fetch_annual_distribution_costs(refresh: bool = False) -> dict[int, float]:
+    return annual_from_periods(_distribution_periods(refresh))
 
 
 def _parse_instance(xml: str, tags: tuple[str, ...]) -> dict[tuple[str, str], dict]:
@@ -384,13 +420,8 @@ def _parse_instance(xml: str, tags: tuple[str, ...]) -> dict[tuple[str, str], di
     return found
 
 
-def fetch_distribution_costs(refresh: bool = False,
-                             derived: set | None = None) -> dict[Quarter, float]:
-    """분기별 유통·거래비용.
-
-    companyfacts API에는 없다. 회사 확장 태그(crcl:...)라서 각 10-Q/10-K의
-    XBRL 인스턴스를 직접 받아 파싱해야 한다.
-    """
+def _distribution_periods(refresh: bool = False) -> dict[tuple[str, str], float]:
+    """유통·거래비용의 (시작일, 종료일) -> 값. 분기·누적·연간을 모두 담는다."""
     def go():
         recent = json.loads(_sec_get(SEC_SUBMISSIONS))["filings"]["recent"]
         result: dict[str, float] = {}
@@ -406,10 +437,19 @@ def fetch_distribution_costs(refresh: bool = False,
                 continue
             for (start, end), vals in _parse_instance(
                     xml, ("crcl:DistributionTransactionAndOtherCosts",)).items():
-                # 분기·누적을 모두 담아둔다. 분기 복원은 아래에서 한다
                 result[f"{start}|{end}"] = vals["DistributionTransactionAndOtherCosts"]
             time.sleep(0.4)  # SEC 요청 간격
         return result
 
     raw = _cached("sec_distribution_costs_v2", go, refresh)
-    return quarterly_from_periods({tuple(k.split("|")): v for k, v in raw.items()}, derived)
+    return {tuple(k.split("|")): v for k, v in raw.items()}
+
+
+def fetch_distribution_costs(refresh: bool = False,
+                             derived: set | None = None) -> dict[Quarter, float]:
+    """분기별 유통·거래비용.
+
+    companyfacts API에는 없다. 회사 확장 태그(crcl:...)라서 각 10-Q/10-K의
+    XBRL 인스턴스를 직접 받아 파싱해야 한다.
+    """
+    return quarterly_from_periods(_distribution_periods(refresh), derived)

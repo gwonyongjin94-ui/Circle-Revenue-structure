@@ -72,19 +72,37 @@ FOMC 발표일을 하드코딩하지 않는다. 각 날짜를 중심으로 앞�
 RLDC        = 매출 - 유통비용    (Circle이 실제로 갖는 몫)
 ```
 
-9개 분기를 공시와 대조한 결과 **절대오차 평균 3.6%**, 그리고 항상 과소 추정이다.
-편향이 일정한 이유는 명확하다 — 공시 매출에는 준비금 수익 외에 기타 매출
-(구독·거래 수수료)이 4% 정도 섞여 있는데 모델은 그걸 빼고 계산한다.
+9개 분기를 공시와 대조한 결과 **절대오차 평균 2.1%, 편향 −0.4%** 로 사실상
+무편향이다.
+
+처음에는 총매출과 대조해 절대오차 3.6%에 편향이 −3.6%로 일관되게 과소 추정했다.
+모델이 추정하는 건 준비금 수익인데 총매출과 비교했기 때문이다. 총매출에는
+기타 매출(구독·거래 수수료)이 섞여 있고, 그 비중이 2024년 0.9%에서 2026년
+5%대로 커지는 중이라 편향도 함께 커지고 있었다. 대조 대상을 공시 준비금 수익
+항목(`us-gaap:InterestAndDividendIncomeOperating`)으로 바꾸자 편향이 사라졌다.
+
+같은 이유로 **유통비용 비율의 분모도 준비금 수익**이다. Coinbase 계약이 걸리는
+대상이 준비금 수익이고, 기타 매출은 나누지 않는 돈이다.
 
 ### 유통비용은 왜 모델링하지 않는가
 
-Coinbase는 자기 플랫폼에 올라온 USDC의 준비금 수익을 **100%**, 그 밖에서
-발생한 수익을 **50%** 가져간다. 그래서 유통비용을 결정하는 변수는 "Coinbase
-플랫폼 내 USDC 잔액"인데, 이건 체인에 찍히지 않고 Circle 공시에만 나온다.
-온체인 데이터로는 원리적으로 추정이 불가능하다.
+계약이 2단계라서 그렇다 (FY2025 10-K).
 
-대신 비율이 매우 안정적이다 (최근 6분기 58.6~61.8%). 그래서 과거 분기는
-공시에서 읽어오고, 아직 공시가 없는 진행 중 분기만 직전 4분기 평균을 쓴다.
+> Under the Collaboration Agreement, Coinbase receives allocations based on the
+> amount of USDC held **on its platform** after our issuer retention, and
+> Coinbase **also** receives **half of the remaining amount** tied to broader
+> ecosystem growth after amounts paid to any approved third-party ecosystem
+> participants.
+
+1단계를 결정하는 변수가 "Coinbase 플랫폼 내 USDC 잔액"인데, 이건 체인에
+찍히지 않고 Circle 공시에만 나온다. 온체인 데이터로는 원리적으로 추정이
+불가능하다.
+
+대신 비율이 안정적이다 (준비금 수익 대비 최근 6분기 61.8~64.2%). 그래서 과거
+분기는 공시에서 읽어오고, 진행 중 분기만 직전 4분기 평균을 쓴다. 복원 분기와
+일회성이 낀 분기는 그 평균 기준에서 뺀다.
+
+상대방별 구성은 `distribution_costs.py` 참조.
 
 ### 일회성 항목 주의
 
@@ -114,11 +132,40 @@ Binance 건이다.
 `--scenario`는 금리와 발행잔액을 흔들었을 때의 연간 매출과 Circle 몫을 낸다.
 
 ```
-금리 +25bp 단독 효과: 매출 +183M  ->  Circle 몫 +73M
-                     (차액 110M은 유통비용으로 유출)
+금리 +25bp 단독 효과: 준비금 수익 +183M  ->  Circle 몫 +77M
+                     (차액 106M은 유통비용으로 유출)
 ```
 
 금리 인상 효과의 약 60%가 Coinbase로 가고 Circle에는 40%만 남는다는 뜻이다.
+
+## 유통비용 상대방별 구성
+
+```bash
+./.venv/bin/python distribution_costs.py
+```
+
+![유통비용 구성](assets/distribution_costs.png)
+
+| 연도 | 준비금수익 | 유통·거래비용 | Coinbase | 기타 | CB/준비금 | 전체/준비금 |
+|---|---|---|---|---|---|---|
+| 2023 | $1.4B | $728M | $691M | $36M | 48.3% | 50.9% |
+| 2024 | $1.7B | $1.0B | $924M | $93M | 55.7% | 61.2% |
+| 2025 | $2.6B | $1.7B | $1.4B* | $301M | 51.7% | 63.1% |
+
+\* FY2025 Coinbase 금액은 본문이 $1.4B로 반올림돼 있어 증가분($438.4M)에서 역산.
+
+**"Coinbase가 50% 가져간다"는 2단계 요율만 가리킨다.** 1단계(플랫폼 내 잔액)가
+따로 있어 실효율은 50%를 넘는다 — 2024년 55.7%.
+
+반대로 2025년에 51.7%로 내려간 건 2단계 조항 때문이다. "다른 파트너 지급분을
+**뺀** 나머지의 절반"이라, Binance 같은 파트너가 늘수록 Coinbase 몫이 깎인다.
+유통비용 중 Coinbase 비중이 2023년 95% → 2025년 82%로 희석됐다.
+
+단, **전체** 비율은 50.9% → 63.1%로 올랐다. Coinbase 몫이 줄어든 것보다 새
+파트너에 나가는 돈이 더 빨리 늘었다는 뜻이다.
+
+상대방별 금액은 XBRL에 태깅돼 있지 않고 10-K 본문 서술에만 나오므로,
+`DISCLOSED`에 출처와 함께 적어두고 총액·준비금 수익만 API에서 받는다.
 
 ## 준비금 구성과 만기 구조
 
@@ -249,9 +296,11 @@ EURC는 유로 페그라 원화 단위가 다르므로, 비교 가능하도록 A
 export SEC_USER_AGENT="이름 you@example.com"
 ```
 
-총매출은 companyfacts API의 표준 태그로 바로 받을 수 있지만, 유통비용은
-회사 확장 태그(`crcl:DistributionTransactionAndOtherCosts`)라 각 10-Q/10-K의
-XBRL 인스턴스를 직접 받아 파싱한다.
+총매출(`us-gaap:Revenues`)과 준비금 수익
+(`us-gaap:InterestAndDividendIncomeOperating`)은 companyfacts API의 표준
+태그로 바로 받는다. 유통비용은 회사 확장 태그
+(`crcl:DistributionTransactionAndOtherCosts`)라 각 10-Q/10-K의 XBRL 인스턴스를
+직접 받아 파싱한다. 상대방별 금액은 아예 태깅돼 있지 않고 본문 서술에만 있다.
 
 응답은 `data/`에 캐시하며 12시간 지나면 자동 갱신한다.
 
@@ -265,6 +314,7 @@ XBRL 인스턴스를 직접 받아 파싱한다.
 | `reserves.py` | 준비금 구성·만기 구조 차트 |
 | `market_share.py` | 시장 점유율 차트 |
 | `revenue_model.py` | 매출 추정 모델 + 공시 검증 + 시나리오 |
+| `distribution_costs.py` | 유통비용 상대방별 구성과 실효율 |
 
 ## 로드맵
 

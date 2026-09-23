@@ -159,6 +159,29 @@ def build(supply, rates, reserve_income, revenue, distribution, derived=()) -> l
     return results
 
 
+def print_calibration(results: list[QuarterResult]) -> None:
+    """실현 준비금 수익률이 대리변수(단기금리)와 얼마나 맞는지 본다.
+
+    모델은 시장금리를 Circle의 실현 수익률 대신 쓴다. 그 대체가 타당한지는
+    공시된 준비금 수익을 평균 잔액으로 역산해 비교하면 바로 드러난다.
+    """
+    print(f"\n  실현 준비금 수익률 vs 대리변수\n")
+    print(f"  {'분기':7}{'평균 AUM':>11}{'대리변수':>10}{'실현':>9}{'차이':>9}{'배수':>8}")
+    ratios = []
+    for r in results:
+        if r.reserve_income is None:
+            continue
+        start, end = quarter_bounds(r.quarter)
+        realized = r.reserve_income / (r.avg_aum * (end - start).days / 365) * 100
+        ratios.append(realized / r.avg_rate)
+        print(f"  {r.quarter[0]}Q{r.quarter[1]}{r.avg_aum / 1e9:9.1f}B{r.avg_rate:9.2f}%"
+              f"{realized:8.2f}%{realized - r.avg_rate:+8.2f}p{ratios[-1]:8.3f}")
+    if ratios:
+        print(f"\n  실현/대리변수 배수  전체평균 {sum(ratios) / len(ratios):.3f}"
+              f"   최근4분기 {sum(ratios[-4:]) / len(ratios[-4:]):.3f}")
+        print("  1.0에 가까울수록 대리변수를 그대로 써도 되는 것이다.")
+
+
 def visible(results: list[QuarterResult]) -> list[QuarterResult]:
     """공시가 있는 분기와, 아직 끝나지 않은 진행 분기만 남긴다.
 
@@ -287,6 +310,8 @@ def main(argv=None) -> int:
     p.add_argument("--rate-series", default="DTB3",
                    help="FRED 금리 시계열 (기본: DTB3 = 3개월 국채)")
     p.add_argument("--scenario", action="store_true", help="금리/잔액 시나리오 표 출력")
+    p.add_argument("--calibration", action="store_true",
+                   help="실현 준비금 수익률과 대리변수의 정합성 점검")
     p.add_argument("--refresh", action="store_true", help="캐시 무시하고 재수집")
     p.add_argument("--out", type=str, help="저장 경로")
     args = p.parse_args(argv)
@@ -325,6 +350,9 @@ def main(argv=None) -> int:
     if errors:
         print(f"\n  절대오차 평균 {sum(abs(e) for e in errors) / len(errors):.1f}%"
               f"  ·  편향 {sum(errors) / len(errors):+.1f}%")
+
+    if args.calibration:
+        print_calibration(shown)
 
     if args.scenario:
         print_scenario(shown[-1])

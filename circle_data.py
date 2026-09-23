@@ -500,6 +500,66 @@ def _parse_instance(xml: str, tags: tuple[str, ...]) -> dict[tuple[str, str], di
     return found
 
 
+def _parse_segmented(xml: str, tag: str) -> dict[tuple[str, str], dict[str, float]]:
+    """(시작일, 종료일) -> {세그먼트 멤버: 값}. 분해 항목을 읽을 때 쓴다.
+
+    _parse_instance 는 전체 합계만 보려고 세그먼트 컨텍스트를 버리지만,
+    매출 분해처럼 멤버별 값이 필요한 경우에는 그쪽이 본체다.
+    """
+    contexts = {}
+    for m in re.finditer(r'<(?:\w+:)?context id="([^"]+)"(.*?)</(?:\w+:)?context>', xml, re.S):
+        body = m.group(2)
+        start = re.search(r'<(?:\w+:)?startDate>([\d-]+)<', body)
+        end = re.search(r'<(?:\w+:)?endDate>([\d-]+)<', body)
+        members = re.findall(r'<(?:\w+:)?explicitMember[^>]*>([^<]+)<', body)
+        if start and end and len(members) == 1:
+            contexts[m.group(1)] = (start.group(1), end.group(1),
+                                    members[0].split(":")[-1])
+
+    found: dict[tuple[str, str], dict[str, float]] = {}
+    for f in re.finditer(rf'<{tag}\b[^>]*contextRef="([^"]+)"[^>]*>([-\d.]+)</{tag}>', xml):
+        ref = f.group(1)
+        if ref in contexts:
+            start, end, member = contexts[ref]
+            found.setdefault((start, end), {})[member] = float(f.group(2))
+    return found
+
+
+# 기타 매출 분해에 쓰이는 세그먼트 멤버
+OTHER_REVENUE_LABELS = {
+    "SubscriptionAndServicesMember": "구독·서비스",
+    "TransactionRevenueMember": "거래 수수료",
+    "OtherServicesMember": "기타",
+}
+
+
+def fetch_other_revenue_mix(refresh: bool = False) -> dict[tuple[str, str], dict[str, float]]:
+    """기타 매출의 구성 항목별 금액. 10-K/10-Q의 매출 분해 주석에서 읽는다."""
+    def go():
+        recent = json.loads(_sec_get(SEC_SUBMISSIONS))["filings"]["recent"]
+        result: dict[str, dict[str, float]] = {}
+        for form, report, accession in zip(recent["form"], recent["reportDate"],
+                                           recent["accessionNumber"]):
+            if form not in ("10-Q", "10-K"):
+                continue
+            acc = accession.replace("-", "")
+            doc = f"crcl-{report.replace('-', '')}"
+            try:
+                xml = _sec_get(f"{SEC_ARCHIVE}/{acc}/{doc}_htm.xml")
+            except requests.HTTPError:
+                continue
+            for period, members in _parse_segmented(
+                    xml, "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax").items():
+                picked = {k: v for k, v in members.items() if k in OTHER_REVENUE_LABELS}
+                if picked:
+                    result.setdefault(f"{period[0]}|{period[1]}", {}).update(picked)
+            time.sleep(0.4)
+        return result
+
+    raw = _cached("sec_other_revenue_mix", go, refresh)
+    return {tuple(k.split("|")): v for k, v in raw.items()}
+
+
 def _distribution_periods(refresh: bool = False) -> dict[tuple[str, str], float]:
     """유통·거래비용의 (시작일, 종료일) -> 값. 분기·누적·연간을 모두 담는다."""
     def go():

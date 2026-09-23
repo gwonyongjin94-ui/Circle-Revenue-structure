@@ -159,6 +159,7 @@ def clip(series: Series, start: datetime | None, end: datetime | None) -> Series
 
 def unit_for(peak: float) -> tuple[float, str]:
     """축 전체에 쓸 단위를 봉우리 값 기준으로 하나만 고른다."""
+    peak = abs(peak)
     if peak >= 1e9:
         return 1e9, "B"
     if peak >= 1e6:
@@ -171,7 +172,10 @@ def unit_for(peak: float) -> tuple[float, str]:
 def human(value: float) -> str:
     div, suffix = unit_for(value)
     scaled = value / div
-    return f"${scaled:,.0f}{suffix}" if scaled >= 10 else f"${scaled:,.1f}{suffix}"
+    sign = "-" if scaled < 0 else ""
+    scaled = abs(scaled)
+    text = f"{scaled:,.0f}{suffix}" if scaled >= 10 else f"{scaled:,.1f}{suffix}"
+    return f"{sign}${text}"
 
 
 def tex_safe(text: str) -> str:
@@ -479,6 +483,12 @@ def fetch_annual_reserve_income(refresh: bool = False) -> dict[int, float]:
 
 def fetch_annual_distribution_costs(refresh: bool = False) -> dict[int, float]:
     return annual_from_periods(_distribution_periods(refresh))
+
+
+def fetch_annual(tag: str, refresh: bool = False) -> dict[int, float]:
+    """표준 태그의 연간 값. 영업비용·주식보상처럼 분기 태깅이 없는 항목용."""
+    return annual_from_periods(
+        _concept_periods(f"sec_{tag.lower()}", tag, refresh))
 
 
 def _parse_instance(xml: str, tags: tuple[str, ...]) -> dict[tuple[str, str], dict]:

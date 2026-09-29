@@ -296,6 +296,28 @@ FY2025 영업손익은 **−$96.4M**이지만 주식보상이 **$566.2M**이다 
 상대방별 금액은 XBRL에 태깅돼 있지 않고 10-K 본문 서술에만 나오므로,
 `DISCLOSED`에 출처와 함께 적어두고 총액·준비금 수익만 API에서 받는다.
 
+## 자동 갱신
+
+매일 22:30 UTC(미 증시 마감 후)에 GitHub Actions가 모든 데이터를 다시 받아
+차트와 [SNAPSHOT.md](SNAPSHOT.md)를 갱신하고 커밋한다.
+
+| 갱신되는 것 | 출처 |
+|---|---|
+| USDC·EURC·USYC 발행잔액 | DefiLlama |
+| 단기금리·기준금리 | FRED |
+| 준비금 보유내역 | BlackRock USDXX |
+| 공시 실적 | SEC EDGAR |
+| CRCL 주가·주식수 | Yahoo Finance · SEC EDGAR |
+
+수동 실행은 저장소의 Actions 탭에서 `update` 워크플로의 **Run workflow**,
+로컬에서는 `./update.sh`.
+
+외부 API 하나가 죽어도 나머지는 갱신된다. 실패한 스크립트가 있으면 워크플로가
+실패로 끝나 알림이 간다.
+
+`SEC_USER_AGENT`는 저장소 시크릿에 넣어 두었다. SEC가 요청마다 연락처를
+요구하는데, 공개 저장소라 워크플로 파일에 직접 적지 않는다.
+
 ## 준비금 구성과 만기 구조
 
 Circle 매출은 준비금 운용수익이고, 그 수익이 금리를 얼마나 빨리 따라가는지는
@@ -329,6 +351,28 @@ Circle 매출은 준비금 운용수익이고, 그 수익이 금리를 얼마나
 USDC 점유율이 꺾인 지점들이 금리 변곡점이 아니라 개별 사건과 겹친다는 점이
 차트에서 바로 보인다. 2022년 9월 Binance 강제전환, 2023년 3월 SVB 파산이
 각각 하락 구간의 시작점이고, 2025년 GENIUS Act 이후 회복한다.
+
+## 자동 갱신
+
+매일 22:30 UTC(미 증시 마감 후)에 GitHub Actions가 모든 데이터를 다시 받아
+차트와 [SNAPSHOT.md](SNAPSHOT.md)를 갱신하고 커밋한다.
+
+| 갱신되는 것 | 출처 |
+|---|---|
+| USDC·EURC·USYC 발행잔액 | DefiLlama |
+| 단기금리·기준금리 | FRED |
+| 준비금 보유내역 | BlackRock USDXX |
+| 공시 실적 | SEC EDGAR |
+| CRCL 주가·주식수 | Yahoo Finance · SEC EDGAR |
+
+수동 실행은 저장소의 Actions 탭에서 `update` 워크플로의 **Run workflow**,
+로컬에서는 `./update.sh`.
+
+외부 API 하나가 죽어도 나머지는 갱신된다. 실패한 스크립트가 있으면 워크플로가
+실패로 끝나 알림이 간다.
+
+`SEC_USER_AGENT`는 저장소 시크릿에 넣어 두었다. SEC가 요청마다 연락처를
+요구하는데, 공개 저장소라 워크플로 파일에 직접 적지 않는다.
 
 ## 준비
 

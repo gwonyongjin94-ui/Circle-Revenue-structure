@@ -183,11 +183,18 @@ def print_calibration(results: list[QuarterResult]) -> None:
 
 
 def visible(results: list[QuarterResult]) -> list[QuarterResult]:
-    """공시가 있는 분기와, 아직 끝나지 않은 진행 분기만 남긴다.
+    """공시가 있는 분기와, 아직 공시가 나오지 않은 그 이후 분기만 남긴다.
 
-    상장 전(2025년 6월 IPO) 분기는 공시가 없어 검증도 비교도 불가능하다.
+    상장 전(2025년 6월 IPO) 분기는 공시가 없어 검증도 비교도 불가능하므로 뺀다.
+    반대로 최근 분기는 분기가 끝나도 공시까지 한 달 넘게 걸리므로, "끝났는가"가
+    아니라 "공시됐는가"로 갈라야 한다. 전자로 판단하면 분기 말에 현재 분기가
+    화면에서 사라진다.
     """
-    return [r for r in results if r.reserve_income is not None or not r.complete]
+    reported = [r.quarter for r in results if r.reserve_income is not None]
+    if not reported:
+        return [r for r in results if not r.complete]
+    last = max(reported)
+    return [r for r in results if r.reserve_income is not None or r.quarter > last]
 
 
 def scenario(latest: QuarterResult):

@@ -1,5 +1,7 @@
 # Circle Revenue Structure
 
+**대시보드 → https://gwonyongjin94-ui.github.io/Circle-Revenue-structure/**
+
 Circle(USDC 발행사)의 수익 구조를 데이터로 뜯어보는 프로젝트.
 
 Circle의 매출은 사실상 **준비금 운용수익 = 단기금리 x 발행잔액** 으로 결정된다.
@@ -309,6 +311,9 @@ FY2025 영업손익은 **−$96.4M**이지만 주식보상이 **$566.2M**이다 
 | 공시 실적 | SEC EDGAR |
 | CRCL 주가·주식수 | Yahoo Finance · SEC EDGAR |
 
+갱신 대상에는 [대시보드](https://gwonyongjin94-ui.github.io/Circle-Revenue-structure/)도
+포함된다 — `docs/index.html`을 매번 다시 만들어 차트와 같은 시점을 가리킨다.
+
 수동 실행은 저장소의 Actions 탭에서 `update` 워크플로의 **Run workflow**,
 로컬에서는 `./update.sh`.
 
@@ -364,6 +369,9 @@ USDC 점유율이 꺾인 지점들이 금리 변곡점이 아니라 개별 사�
 | 준비금 보유내역 | BlackRock USDXX |
 | 공시 실적 | SEC EDGAR |
 | CRCL 주가·주식수 | Yahoo Finance · SEC EDGAR |
+
+갱신 대상에는 [대시보드](https://gwonyongjin94-ui.github.io/Circle-Revenue-structure/)도
+포함된다 — `docs/index.html`을 매번 다시 만들어 차트와 같은 시점을 가리킨다.
 
 수동 실행은 저장소의 Actions 탭에서 `update` 워크플로의 **Run workflow**,
 로컬에서는 `./update.sh`.
@@ -455,7 +463,11 @@ USDC($74B)와 EURC($473M)를 한 축에 놓으면 작은 쪽이 바닥에 깔리
 |---|---|---|---|
 | `usdc` | USDC | USD 페그 스테이블코인 | ~$74B |
 | `eurc` | EURC | EUR 페그 스테이블코인 | ~$473M |
-| `usyc` | USYC | 토큰화 국채 MMF (Hashnote 인수) | ~$2.6B |
+
+USYC는 2026년 10월경 DefiLlama 스테이블코인 목록에서 빠졌다(토큰화 MMF라
+재분류된 것으로 보인다). 엔드포인트가 200에 빈 본문을 돌려주므로
+`SourceUnavailable`로 처리해 건너뛴다. 다시 제공되면 `circle_data.COINS`의
+주석 한 줄만 살리면 된다.
 
 EURC는 유로 페그라 원화 단위가 다르므로, 비교 가능하도록 API의 USD 환산값을 쓴다.
 
@@ -498,6 +510,9 @@ export SEC_USER_AGENT="이름 you@example.com"
 | `other_revenue.py` | 기타 매출 추이와 구성 |
 | `valuation.py` | 배수 기반 주당가치 범위 |
 | `volatility.py` | 실현 변동성과 향후 주가 분포 |
+| `snapshot.py` | 핵심 수치를 SNAPSHOT.md 로 기록 |
+| `build_site.py` | 대시보드 `docs/index.html` 생성 (GitHub Pages) |
+| `update.sh` | 위 전부를 한 번에 실행 |
 
 ## 로드맵
 

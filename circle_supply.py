@@ -2,7 +2,7 @@
 """Circle이 발행하는 스테이블코인의 유통량(발행잔액) 추이를 그래프로 그린다.
 
 사용 예:
-  python circle_supply.py                       # USDC/EURC/USYC 전체
+  python circle_supply.py                       # Circle 발행 코인 전체
   python circle_supply.py --coins usdc          # USDC만
   python circle_supply.py --start 2024-01-01    # 기간 지정
   python circle_supply.py --layout overlay      # 한 축에 겹치기
@@ -125,8 +125,8 @@ def choose_layout(datasets: dict[str, cd.Series]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Circle 발행 코인 유통량 차트")
-    p.add_argument("--coins", default="usdc,eurc,usyc",
-                   help="쉼표 구분 (기본: usdc,eurc,usyc)")
+    p.add_argument("--coins", default=",".join(cd.COINS),
+                   help=f"쉼표 구분 (기본: {', '.join(cd.COINS)})")
     p.add_argument("--start", type=cd.parse_date, help="시작일 YYYY-MM-DD")
     p.add_argument("--end", type=cd.parse_date, help="종료일 YYYY-MM-DD")
     p.add_argument("--layout", choices=("auto", "facet", "overlay"), default="auto",
@@ -144,7 +144,13 @@ def main(argv: list[str] | None = None) -> int:
 
     datasets: dict[str, cd.Series] = {}
     for key in keys:
-        series = cd.clip(cd.fetch_supply(cd.COINS[key], args.refresh), args.start, args.end)
+        try:
+            raw = cd.fetch_supply(cd.COINS[key], args.refresh)
+        except cd.SourceUnavailable as exc:
+            # 한 계열이 빠졌다고 나머지까지 버리지 않는다
+            print(f"  ! {exc} — 건너뜀", file=sys.stderr)
+            continue
+        series = cd.clip(raw, args.start, args.end)
         if not series:
             print(f"  ! {cd.COINS[key].label}: 해당 기간 데이터 없음 — 건너뜀", file=sys.stderr)
             continue

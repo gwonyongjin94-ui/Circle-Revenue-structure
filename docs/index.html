@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circle Revenue Structure</title>
+<meta name="description" content="Circle(USDC 발행사)의 수익 구조를 공개 데이터로 추적하는 대시보드">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fcfcfb; --surface: #ffffff; --line: #e6e5e1;
+  --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #8a8985;
+  --blue: #2a78d6; --orange: #eb6834; --aqua: #1baf7a; --violet: #4a3aa7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #1a1a19; --surface: #232322; --line: #383835;
+    --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #8a8985;
+    --blue: #3987e5; --orange: #d95926; --aqua: #199e70; --violet: #9085e9;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+               "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  line-height: 1.6; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px 72px; }
+header { padding: 56px 0 28px; }
+h1 { font-size: clamp(26px, 5vw, 38px); margin: 0 0 8px; letter-spacing: -0.02em; }
+.lede { color: var(--ink-2); margin: 0; max-width: 62ch; }
+.stamp { color: var(--ink-3); font-size: 13px; margin-top: 14px; }
+h2 { font-size: 20px; margin: 48px 0 14px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; margin: 0 0 4px; }
+
+.gauge {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 24px; margin-top: 8px;
+}
+.gauge-head { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; }
+.gauge-label { font-size: 12px; color: var(--ink-3); letter-spacing: 0.02em; }
+.gauge-range { font-size: clamp(24px, 4vw, 32px); font-weight: 700; letter-spacing: -0.02em; }
+.gauge-range span { color: var(--ink-3); font-weight: 400; }
+.gauge-sub, .gauge-verdict { font-size: 13px; color: var(--ink-2); }
+.gauge-now { text-align: right; }
+.gauge-price { font-size: clamp(24px, 4vw, 32px); font-weight: 700; letter-spacing: -0.02em; }
+[data-tone="below"] .gauge-price, [data-tone="below"] .gauge-verdict { color: var(--orange); }
+[data-tone="above"] .gauge-price, [data-tone="above"] .gauge-verdict { color: var(--violet); }
+[data-tone="inside"] .gauge-price { color: var(--aqua); }
+
+.track {
+  position: relative; height: 16px; margin: 26px 0 6px;
+  background: var(--line); border-radius: 8px;
+}
+.track-band {
+  position: absolute; top: 0; height: 100%;
+  background: var(--aqua); opacity: 0.32; border-radius: 8px;
+}
+.track-mid { position: absolute; top: -4px; height: 24px; width: 2px; background: var(--aqua); }
+.track-now {
+  position: absolute; top: -8px; height: 32px; width: 4px; border-radius: 2px;
+  background: var(--ink); box-shadow: 0 0 0 3px var(--surface);
+}
+.track-axis { position: relative; height: 18px; font-size: 12px; color: var(--ink-3); }
+.track-axis span { position: absolute; transform: translateX(-50%); }
+
+.tiles {
+  display: grid; gap: 12px; margin-top: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+}
+.tile {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 16px;
+}
+.tile-label { font-size: 12px; color: var(--ink-3); }
+.tile-value { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0; }
+.tile-note { font-size: 12px; color: var(--ink-2); }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-3); font-weight: 500; font-size: 12px; }
+tr.pending td { color: var(--ink-2); font-style: italic; }
+.scroll { overflow-x: auto; }
+
+.chart { margin-top: 36px; }
+.chart p { color: var(--ink-2); font-size: 14px; margin: 0 0 12px; }
+.chart img {
+  width: 100%; height: auto; display: block; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--surface);
+}
+.note {
+  background: var(--surface); border: 1px solid var(--line);
+  border-left: 3px solid var(--orange);
+  border-radius: 10px; padding: 16px; margin-top: 20px;
+  font-size: 14px; color: var(--ink-2);
+}
+footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line);
+          font-size: 13px; color: var(--ink-3); }
+a { color: var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Circle Revenue Structure</h1>
+  <p class="lede">
+    Circle(USDC 발행사)의 수익 구조를 공개 데이터로 추적한다.
+    매출은 사실상 <strong>단기금리 × 발행잔액</strong>으로 결정되고, 그 가운데
+    약 63%가 유통비용으로 빠져나간다.
+  </p>
+  <p class="stamp">
+    자동 갱신 · 2026-11-02 04:35 UTC ·
+    <a href="https://github.com/gwonyongjin94-ui/Circle-Revenue-structure">GitHub</a>
+  </p>
+</header>
+
+<h2>주당가치와 현재 주가</h2>
+
+    <div class="gauge" data-tone="below">
+      <div class="gauge-head">
+        <div>
+          <div class="gauge-label">주당가치 범위</div>
+          <div class="gauge-range">$75 <span>~</span> $91</div>
+          <div class="gauge-sub">중앙 $81</div>
+        </div>
+        <div class="gauge-now">
+          <div class="gauge-label">현재 주가</div>
+          <div class="gauge-price">$72.54</div>
+          <div class="gauge-verdict">밴드 하단보다 3% 아래</div>
+        </div>
+      </div>
+      <div class="track">
+        <div class="track-band" style="left:25.87%;width:56.18%"></div>
+        <div class="track-mid" style="left:47.62%"></div>
+        <div class="track-now" style="left:17.95%"></div>
+      </div>
+      <div class="track-axis">
+        <span style="left:25.87%">$75</span>
+        <span style="left:82.05%">$91</span>
+      </div>
+    </div>
+<div class="note">
+  밴드는 <strong>공시가 나온 3개 분기</strong>(2025Q4~2026Q2)의
+  시총/TTM RLDC 배수 범위(16.0~19.5x)를
+  현재 TTM RLDC $1.2B에 적용한 값이다.
+  재평가가 끝난 구간만 쓰며, 상장 직후의 51.7x는 제외한다.
+  <strong>적정가치가 아니라 "최근 시장이 매겨온 범위"</strong>라는 점에 주의할 것 —
+  배수 자체가 바뀌면 밴드도 함께 움직인다.
+  변동성이 연율 90%를 넘어 12개월 90% 구간은 이 밴드보다 수십 배 넓다.
+</div>
+
+<h2>지금 상태</h2>
+<div class="tiles"><div class="tile"><div class="tile-label">USDC 유통량</div><div class="tile-value">$72B</div><div class="tile-note">2026-11-02</div></div><div class="tile"><div class="tile-label">시가총액</div><div class="tile-value">$18B</div><div class="tile-note">TTM 매출 6.3x</div></div><div class="tile"><div class="tile-label">2026Q4 총매출 추정</div><div class="tile-value">$779M</div><div class="tile-note">준비금 수익 $743M</div></div><div class="tile"><div class="tile-label">RLDC (Circle 몫)</div><div class="tile-value">$312M</div><div class="tile-note">유통비용 63% 차감 후</div></div><div class="tile"><div class="tile-label">분기 평균 단기금리</div><div class="tile-value">4.05%</div><div class="tile-note">3개월 국채</div></div><div class="tile"><div class="tile-label">준비금 익일물 비중</div><div class="tile-value">56%</div><div class="tile-note">펀드 $58B</div></div></div>
+
+<h2>분기 실적 — 모델 추정과 공시</h2>
+<div class="scroll">
+    <table>
+      <thead><tr><th>분기</th><th>평균 잔액</th><th>금리</th><th>모델 준비금수익</th>
+      <th>공시</th><th>오차</th><th>총매출</th><th>RLDC</th></tr></thead>
+      <tbody><tr><td>2025Q3</td><td>$67B</td><td>4.10%</td><td>$697M</td><td>$711M</td><td>-2.0%</td><td>$740M</td><td>$292M</td></tr><tr><td>2025Q4</td><td>$76B</td><td>3.73%</td><td>$713M</td><td>$733M</td><td>-2.8%</td><td>$770M</td><td>$309M</td></tr><tr><td>2026Q1</td><td>$75B</td><td>3.59%</td><td>$667M</td><td>$653M</td><td>+2.2%</td><td>$694M</td><td>$287M</td></tr><tr><td>2026Q2</td><td>$77B</td><td>3.62%</td><td>$693M</td><td>$668M</td><td>+3.8%</td><td>$701M</td><td>$289M</td></tr><tr class="pending"><td>2026Q3</td><td>$74B</td><td>3.80%</td><td>$704M</td><td>—</td><td>—</td><td>$738M</td><td>$296M</td></tr><tr class="pending"><td>2026Q4</td><td>$73B</td><td>4.05%</td><td>$743M</td><td>—</td><td>—</td><td>$779M</td><td>$312M</td></tr></tbody>
+    </table></div>
+<div class="note">
+  모델은 잔액과 금리만으로 준비금 수익을 계산한다. 공시가 나온 분기에서
+  절대오차 평균 2% 수준이다. 기울임체 행은 아직 공시 전이라 모델값이다.
+</div>
+
+<h2>차트</h2>
+<section class="chart">
+          <h3>주당가치 범위</h3>
+          <p>과거 배수 범위가 함의하는 주당가치와 현재 주가</p>
+          <a href="assets/valuation.png"><img src="assets/valuation.png" alt="주당가치 범위" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>변동성과 향후 주가 분포</h3>
+          <p>연율 변동성, 일간 수익률 분포, 향후 분포에 겹친 밸류에이션 밴드</p>
+          <a href="assets/volatility.png"><img src="assets/volatility.png" alt="변동성과 향후 주가 분포" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>분기 매출 — 모델 vs 공시</h3>
+          <p>잔액과 금리로 추정한 값을 공시 실적과 대조한다</p>
+          <a href="assets/revenue_model.png"><img src="assets/revenue_model.png" alt="분기 매출 — 모델 vs 공시" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>주가 vs 매출</h3>
+          <p>주가가 빠지는 동안 매출이 어떻게 움직였는지, 그리고 배수 변화</p>
+          <a href="assets/price_vs_revenue.png"><img src="assets/price_vs_revenue.png" alt="주가 vs 매출" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>준비금 구성과 만기 구조</h3>
+          <p>매출이 금리를 얼마나 빨리 따라가는지를 결정하는 구조</p>
+          <a href="assets/reserves.png"><img src="assets/reserves.png" alt="준비금 구성과 만기 구조" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>유통비용 상대방별 구성</h3>
+          <p>Coinbase 실효 배분율과 그 밖 파트너 비중</p>
+          <a href="assets/distribution_costs.png"><img src="assets/distribution_costs.png" alt="유통비용 상대방별 구성" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>발행잔액 vs 기준금리 (대조군 포함)</h3>
+          <p>금리가 발행잔액을 움직였는지 USDT 대조군으로 검증한다</p>
+          <a href="assets/supply_vs_rate_placebo.png"><img src="assets/supply_vs_rate_placebo.png" alt="발행잔액 vs 기준금리 (대조군 포함)" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>시장 점유율</h3>
+          <p>USDC·USDT 점유율과 전체 시장 규모</p>
+          <a href="assets/market_share.png"><img src="assets/market_share.png" alt="시장 점유율" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>기타 매출</h3>
+          <p>준비금 수익 외 매출의 추이와 구성</p>
+          <a href="assets/other_revenue.png"><img src="assets/other_revenue.png" alt="기타 매출" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>발행 코인 유통량</h3>
+          <p>Circle이 발행하는 코인별 유통량</p>
+          <a href="assets/circle_supply.png"><img src="assets/circle_supply.png" alt="발행 코인 유통량" loading="lazy"></a>
+        </section>
+
+<footer>
+  데이터 출처: DefiLlama · FRED · SEC EDGAR(CIK 1876042) · BlackRock USDXX · Yahoo Finance<br>
+  공개 데이터로 만든 분석 도구다. 투자 판단이나 권유가 아니다.
+  주당가치는 배수 가정에 전적으로 의존하고, 향후 주가 분포는 예측이 아니라
+  현재 변동성이 유지될 경우의 조건부 서술이다.
+</footer>
+</div>
+</body>
+</html>

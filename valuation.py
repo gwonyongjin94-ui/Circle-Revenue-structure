@@ -43,11 +43,18 @@ PRICE_COLOR = "#4a3aa7"    # slot 7 violet — 현재 주가
 DERATED_FROM = (2025, 4)
 
 
-def history(results, prices, shares):
-    """(분기, 시가총액, TTM 매출, TTM RLDC) — TTM 4개 분기가 다 있는 분기만."""
+def history(results, prices, shares, reported_only: bool = False):
+    """(분기, 시가총액, TTM 매출, TTM RLDC) — TTM 4개 분기가 다 있는 분기만.
+
+    reported_only=True 면 공시가 나온 분기만 남긴다. 배수 범위를 뽑을 때 쓴다 —
+    진행 중 분기는 분기말 주가를 구할 수 없어 오늘 주가를 쓰는데, 그러면 밴드
+    하단이 현재가에 못 박혀 밴드가 자기 자신을 참조하게 된다.
+    """
     by_q = {r.quarter: r for r in results}
     out = []
     for r in results:
+        if reported_only and r.reserve_income is None:
+            continue
         window, q = [], r.quarter
         for _ in range(4):
             if q not in by_q:
@@ -106,10 +113,11 @@ def plot(scenarios, current, hist, out_path):
 
     ax_val.axhline(current, color=PRICE_COLOR, linewidth=2, zorder=4)
     # 마지막 시나리오 라벨과 겹치므로 왼쪽 빈 구간에 둔다
+    # 첫 시나리오 라벨과 겹치지 않도록 값 라벨 반대편(아래)에 둔다
     ax_val.annotate(cd.tex_safe(f"현재 주가 ${current:,.2f}"),
-                    xy=(-0.6, current), xytext=(2, 6), textcoords="offset points",
+                    xy=(-0.6, current), xytext=(2, -6), textcoords="offset points",
                     fontsize=9.5, color=PRICE_COLOR, fontweight="bold",
-                    ha="left", va="bottom", zorder=6)
+                    ha="left", va="top", zorder=6)
 
     ax_val.set_xticks(xs)
     ax_val.set_xticklabels(labels, fontsize=9, color=cd.INK_SECONDARY, linespacing=1.5)
@@ -179,7 +187,9 @@ def main(argv=None) -> int:
     current, count = prices[-1][1], shares[-1][1]
     ttm_rev, ttm_rldc = hist[-1][2], hist[-1][3]
 
-    derated = [h for h in hist if h[0] >= DERATED_FROM]
+    # 배수 범위는 공시가 나온 분기에서만 뽑는다 (history 설명 참조)
+    derated = [h for h in history(results, prices, shares, reported_only=True)
+               if h[0] >= DERATED_FROM]
     rev_band = band([c / r for _, c, r, _ in derated])
     rldc_band = band([c / l for _, c, _, l in derated])
 

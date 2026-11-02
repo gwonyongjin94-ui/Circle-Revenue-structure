@@ -38,6 +38,9 @@ for f in circle_supply supply_vs_rate supply_vs_rate_placebo reserves market_sha
 done
 [ -f output/usdc_only.png ] && cp output/usdc_only.png assets/usdc_supply.png
 
+# 사이트는 assets/ 를 참조하므로 복사가 끝난 뒤에 만든다
+run build_site.py
+
 if [ ${#failed[@]} -gt 0 ]; then
   printf '\n실패한 스크립트:\n'
   printf '  %s\n' "${failed[@]}"

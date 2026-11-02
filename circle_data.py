@@ -63,6 +63,10 @@ CUT_TINT = "#2a78d6"      # slot 1 blue   — 인하기 배경
 Series = list[tuple[datetime, float]]
 
 
+class SourceUnavailable(RuntimeError):
+    """출처가 그 계열을 더는 제공하지 않을 때. 호출부가 건너뛸 수 있게 한다."""
+
+
 @dataclass(frozen=True)
 class Coin:
     key: str
@@ -74,7 +78,10 @@ class Coin:
 COINS: dict[str, Coin] = {
     "usdc": Coin("usdc", 2, "USDC", "#2a78d6"),   # slot 1 blue
     "eurc": Coin("eurc", 50, "EURC", "#eb6834"),  # slot 2 orange
-    "usyc": Coin("usyc", 237, "USYC", "#1baf7a"), # slot 3 aqua
+    # USYC는 2026년 10월경 DefiLlama 스테이블코인 목록에서 빠졌다 (토큰화 MMF라
+    # 재분류된 것으로 보인다). 엔드포인트가 200 + 빈 본문을 준다. 다시 제공되면
+    # 아래 줄만 살리면 된다.
+    # "usyc": Coin("usyc", 237, "USYC", "#1baf7a"),  # slot 3 aqua
 }
 
 # Circle 발행 코인은 아니지만 대조군으로 쓰는 계열
@@ -118,6 +125,10 @@ def fetch_supply(coin: Coin, refresh: bool = False) -> Series:
     def go():
         r = requests.get(LLAMA_API, params={"stablecoin": coin.llama_id}, timeout=30)
         r.raise_for_status()
+        # DefiLlama는 추적을 중단한 자산에 200 + 빈 본문을 준다
+        if not r.text.strip():
+            raise SourceUnavailable(
+                f"{coin.label}: DefiLlama가 더는 제공하지 않는다 (id {coin.llama_id})")
         return r.json()
 
     out: Series = []

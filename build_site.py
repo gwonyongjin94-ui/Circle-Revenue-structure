@@ -17,6 +17,7 @@ import shutil
 from datetime import datetime, timezone
 
 import circle_data as cd
+import earnings
 import snapshot
 from revenue_model import build, visible
 from valuation import DERATED_FROM, band, history
@@ -25,6 +26,8 @@ DOCS = cd.ROOT / "docs"
 
 CHARTS = [
     ("valuation.png", "주당가치 범위", "과거 배수 범위가 함의하는 주당가치와 현재 주가"),
+    ("earnings.png", "이익 기준 밸류에이션",
+     "조정 영업이익 배수로 본 주당가치와 RLDC 기준 밴드의 차이"),
     ("volatility.png", "변동성과 향후 주가 분포",
      "연율 변동성, 일간 수익률 분포, 향후 분포에 겹친 밸류에이션 밴드"),
     ("revenue_model.png", "분기 매출 — 모델 vs 공시",
@@ -65,6 +68,7 @@ def collect(refresh: bool = False) -> dict:
     s["results"] = results
     errors = [abs(r.error) for r in results if r.error is not None]
     s["mean_error"] = sum(errors) / len(errors) if errors else 0.0
+    s["earnings"] = earnings.compute()
     return s
 
 
@@ -163,6 +167,7 @@ def quarters_table(s: dict) -> str:
 
 def render(s: dict) -> str:
     lo, mid, hi = s["value_band"]
+    e = s["earnings"]
     one_off_note = "".join(
         f" {r.quarter[0]}Q{r.quarter[1]} 총매출에는 {r.one_off_rev[1]} "
         f"{cd.human(r.one_off_rev[0])}이 들어 있다 — 이를 빼면 경상 매출 "
@@ -276,6 +281,10 @@ tr.pending td {{ color: var(--ink-2); font-style: italic; }}
   color: var(--orange); border: 1px solid var(--orange);
   border-radius: 5px; padding: 0 4px; margin-left: 4px; vertical-align: 1px;
 }}
+.basis {{
+  font-size: 13px; color: var(--ink-3); margin: 22px 0 8px;
+  font-weight: 600; letter-spacing: .01em;
+}}
 .note {{
   background: var(--surface); border: 1px solid var(--line);
   border-left: 3px solid var(--orange);
@@ -303,7 +312,27 @@ a {{ color: var(--blue); }}
 </header>
 
 <h2>주당가치와 현재 주가</h2>
+<p class="basis">RLDC 기준 — 유통비용까지 뺀 Circle 몫</p>
 {gauge(lo, mid, hi, s['price'])}
+<p class="basis">조정 영업이익 기준 — 영업비용까지 뺀 뒤, 주식보상은 되돌린 값</p>
+{gauge(e['adj_value'][0], e['adj_value'][1], e['adj_value'][2], s['price'])}
+<div class="note">
+  <strong>두 기준이 다른 답을 낸다.</strong> RLDC 기준으로는 현재 주가가 밴드
+  하단 근처지만, 영업비용까지 뺀 이익 기준으로는 중앙값 위다. 차이는 영업비용에서
+  온다 — 경상 RLDC가 {cd.human(s['earnings']['rows'][-4][4])}에서
+  {cd.human(s['earnings']['rows'][-1][4])}로 줄어드는 동안 주식보상을 뺀 영업비용은
+  {cd.human(s['earnings']['rows'][-4][5])}에서 {cd.human(s['earnings']['rows'][-1][5])}로 늘었다.
+  그 결과 TTM 조정 영업이익은 {cd.human(e['adj_ttm'][-4][2])}에서
+  {cd.human(e['adj_ttm'][-1][2])}로 줄었다.
+</div>
+<div class="note">
+  이익 기준에는 단서가 둘 붙는다. 첫째, <strong>보고 영업이익</strong>으로는 밴드를
+  낼 수 없다 — {DERATED_FROM[0]}Q{DERATED_FROM[1]} 이후 {len(e['derated'])}개 분기 중 TTM이 흑자인 분기가
+  {len(e['positive'])}개뿐이다. 위 밴드는 주식보상을 되돌린 조정값이다.
+  둘째, 그 주식보상은 사라지지 않고 <strong>주식 수</strong>로 옮겨간다 —
+  {e['shares_first'] / 1e6:.0f}M주에서 {e['shares_last'] / 1e6:.0f}M주로
+  연 {e['dilution_rate']:.1f}%씩 늘고 있어, 주당 이익은 매년 그만큼 희석된다.
+</div>
 <div class="note">
   밴드는 <strong>공시가 나온 {s['band_quarters']}개 분기</strong>({DERATED_FROM[0]}Q{DERATED_FROM[1]}~{last})의
   시총/TTM RLDC 배수 범위({s['multiple_band'][0]:.1f}~{s['multiple_band'][2]:.1f}x)를

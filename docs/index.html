@@ -96,6 +96,10 @@ tr.pending td { color: var(--ink-2); font-style: italic; }
   color: var(--orange); border: 1px solid var(--orange);
   border-radius: 5px; padding: 0 4px; margin-left: 4px; vertical-align: 1px;
 }
+.basis {
+  font-size: 13px; color: var(--ink-3); margin: 22px 0 8px;
+  font-weight: 600; letter-spacing: .01em;
+}
 .note {
   background: var(--surface); border: 1px solid var(--line);
   border-left: 3px solid var(--orange);
@@ -117,12 +121,13 @@ a { color: var(--blue); }
     약 63%가 유통비용으로 빠져나간다.
   </p>
   <p class="stamp">
-    자동 갱신 · 2026-11-05 01:58 UTC ·
+    자동 갱신 · 2026-11-05 02:17 UTC ·
     <a href="https://github.com/gwonyongjin94-ui/Circle-Revenue-structure">GitHub</a>
   </p>
 </header>
 
 <h2>주당가치와 현재 주가</h2>
+<p class="basis">RLDC 기준 — 유통비용까지 뺀 Circle 몫</p>
 
     <div class="gauge" data-tone="inside">
       <div class="gauge-head">
@@ -147,6 +152,48 @@ a { color: var(--blue); }
         <span style="left:82.05%">$88</span>
       </div>
     </div>
+<p class="basis">조정 영업이익 기준 — 영업비용까지 뺀 뒤, 주식보상은 되돌린 값</p>
+
+    <div class="gauge" data-tone="inside">
+      <div class="gauge-head">
+        <div>
+          <div class="gauge-label">주당가치 범위</div>
+          <div class="gauge-range">$58 <span>~</span> $83</div>
+          <div class="gauge-sub">중앙 $69</div>
+        </div>
+        <div class="gauge-now">
+          <div class="gauge-label">현재 주가</div>
+          <div class="gauge-price">$75.22</div>
+          <div class="gauge-verdict">밴드 안 (하단에서 70% 지점)</div>
+        </div>
+      </div>
+      <div class="track">
+        <div class="track-band" style="left:17.95%;width:64.10%"></div>
+        <div class="track-mid" style="left:47.54%"></div>
+        <div class="track-now" style="left:62.72%"></div>
+      </div>
+      <div class="track-axis">
+        <span style="left:17.95%">$58</span>
+        <span style="left:82.05%">$83</span>
+      </div>
+    </div>
+<div class="note">
+  <strong>두 기준이 다른 답을 낸다.</strong> RLDC 기준으로는 현재 주가가 밴드
+  하단 근처지만, 영업비용까지 뺀 이익 기준으로는 중앙값 위다. 차이는 영업비용에서
+  온다 — 경상 RLDC가 $309M에서
+  $271M로 줄어드는 동안 주식보상을 뺀 영업비용은
+  $194M에서 $202M로 늘었다.
+  그 결과 TTM 조정 영업이익은 $470M에서
+  $369M로 줄었다.
+</div>
+<div class="note">
+  이익 기준에는 단서가 둘 붙는다. 첫째, <strong>보고 영업이익</strong>으로는 밴드를
+  낼 수 없다 — 2025Q4 이후 4개 분기 중 TTM이 흑자인 분기가
+  2개뿐이다. 위 밴드는 주식보상을 되돌린 조정값이다.
+  둘째, 그 주식보상은 사라지지 않고 <strong>주식 수</strong>로 옮겨간다 —
+  229M주에서 257M주로
+  연 9.5%씩 늘고 있어, 주당 이익은 매년 그만큼 희석된다.
+</div>
 <div class="note">
   밴드는 <strong>공시가 나온 4개 분기</strong>(2025Q4~2026Q3)의
   시총/TTM RLDC 배수 범위(16.0~19.5x)를
@@ -185,6 +232,10 @@ a { color: var(--blue); }
           <h3>주당가치 범위</h3>
           <p>과거 배수 범위가 함의하는 주당가치와 현재 주가</p>
           <a href="assets/valuation.png"><img src="assets/valuation.png" alt="주당가치 범위" loading="lazy"></a>
+        </section><section class="chart">
+          <h3>이익 기준 밸류에이션</h3>
+          <p>조정 영업이익 배수로 본 주당가치와 RLDC 기준 밴드의 차이</p>
+          <a href="assets/earnings.png"><img src="assets/earnings.png" alt="이익 기준 밸류에이션" loading="lazy"></a>
         </section><section class="chart">
           <h3>변동성과 향후 주가 분포</h3>
           <p>연율 변동성, 일간 수익률 분포, 향후 분포에 겹친 밸류에이션 밴드</p>

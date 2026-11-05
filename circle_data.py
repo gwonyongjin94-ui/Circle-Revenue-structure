@@ -218,7 +218,12 @@ def money_formatter(peak: float):
     """축 눈금 포맷. 범위가 좁으면 소수 한 자리를 써서 눈금이 중복되지 않게 한다."""
     div, suffix = unit_for(peak)
     prec = 0 if peak / div >= 10 else 1
-    return plt.FuncFormatter(lambda v, _: f"${v / div:,.{prec}f}{suffix}")
+
+    def fmt(v, _):
+        sign = "-" if v < 0 else ""      # $-200M 이 아니라 -$200M
+        return f"{sign}${abs(v) / div:,.{prec}f}{suffix}"
+
+    return plt.FuncFormatter(fmt)
 
 
 def credit(fig, last: datetime, sources: str, x: float = 0.10) -> None:
@@ -494,6 +499,16 @@ def fetch_annual_reserve_income(refresh: bool = False) -> dict[int, float]:
 
 def fetch_annual_distribution_costs(refresh: bool = False) -> dict[int, float]:
     return annual_from_periods(_distribution_periods(refresh))
+
+
+def fetch_quarterly(tag: str, refresh: bool = False,
+                    derived: set | None = None) -> dict[Quarter, float]:
+    """표준 태그의 분기 값. 손익계산서 항목은 분기 태깅이 있어 바로 받는다.
+
+    4분기는 태깅이 없어 연간-9개월 차감으로 복원된다 (quarterly_from_periods).
+    """
+    return quarterly_from_periods(
+        _concept_periods(f"sec_{tag.lower()}", tag, refresh), derived)
 
 
 def fetch_annual(tag: str, refresh: bool = False) -> dict[int, float]:

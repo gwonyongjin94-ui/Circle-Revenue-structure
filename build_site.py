@@ -28,6 +28,8 @@ CHARTS = [
     ("valuation.png", "주당가치 범위", "과거 배수 범위가 함의하는 주당가치와 현재 주가"),
     ("earnings.png", "이익 기준 밸류에이션",
      "조정 영업이익 배수로 본 주당가치와 RLDC 기준 밴드의 차이"),
+    ("opex_breakdown.png", "영업비용 항목별 분해",
+     "영업비용 증가가 어느 항목에서 오는지, 경상 RLDC를 얼마나 가져가는지"),
     ("volatility.png", "변동성과 향후 주가 분포",
      "연율 변동성, 일간 수익률 분포, 향후 분포에 겹친 밸류에이션 밴드"),
     ("revenue_model.png", "분기 매출 — 모델 vs 공시",
@@ -177,7 +179,7 @@ def render(s: dict) -> str:
     q = f"{s['quarter'][0]}Q{s['quarter'][1]}"
     last = f"{s['last_reported'][0]}Q{s['last_reported'][1]}"
     sections = "".join(
-        f"""<section class="chart">
+        f"""<section class="chart" id="{name.replace('.png', '').replace('_breakdown', '')}">
           <h3>{title}</h3>
           <p>{note}</p>
           <a href="assets/{name}"><img src="assets/{name}" alt="{title}" loading="lazy"></a>
@@ -324,6 +326,8 @@ a {{ color: var(--blue); }}
   {cd.human(s['earnings']['rows'][-4][5])}에서 {cd.human(s['earnings']['rows'][-1][5])}로 늘었다.
   그 결과 TTM 조정 영업이익은 {cd.human(e['adj_ttm'][-4][2])}에서
   {cd.human(e['adj_ttm'][-1][2])}로 줄었다.
+  그 증가가 어느 항목에서 오는지는 아래
+  <a href="#opex">영업비용 항목별 분해</a>에 있다.
 </div>
 <div class="note">
   이익 기준에는 단서가 둘 붙는다. 첫째, <strong>보고 영업이익</strong>으로는 밴드를

@@ -596,11 +596,21 @@ def fetch_other_revenue_mix(refresh: bool = False) -> dict[tuple[str, str], dict
     return {tuple(k.split("|")): v for k, v in raw.items()}
 
 
-def _distribution_periods(refresh: bool = False) -> dict[tuple[str, str], float]:
-    """유통·거래비용의 (시작일, 종료일) -> 값. 분기·누적·연간을 모두 담는다."""
+# 회사 확장 태그(crcl:...)는 companyfacts API에 없어 각 10-Q/10-K의 XBRL
+# 인스턴스를 직접 받아야 한다. 공시 하나당 요청 하나라 비싸므로, 필요한 태그를
+# 여기 모아 한 번만 훑는다.
+EXTENSION_TAGS = (
+    "crcl:DistributionTransactionAndOtherCosts",
+    "crcl:InformationTechnologyInfrastructureCosts",
+)
+
+
+def _extension_periods(refresh: bool = False) -> dict[str, dict[tuple[str, str], float]]:
+    """확장 태그 이름 -> {(시작일, 종료일): 값}. 분기·누적·연간을 모두 담는다."""
     def go():
         recent = json.loads(_sec_get(SEC_SUBMISSIONS))["filings"]["recent"]
-        result: dict[str, float] = {}
+        result: dict[str, dict[str, float]] = {t.split(":")[-1]: {}
+                                               for t in EXTENSION_TAGS}
         for form, report_date, accession in zip(recent["form"], recent["reportDate"],
                                                 recent["accessionNumber"]):
             if form not in ("10-Q", "10-K"):
@@ -611,14 +621,28 @@ def _distribution_periods(refresh: bool = False) -> dict[tuple[str, str], float]
                 xml = _sec_get(f"{SEC_ARCHIVE}/{acc}/{doc}_htm.xml")
             except requests.HTTPError:
                 continue
-            for (start, end), vals in _parse_instance(
-                    xml, ("crcl:DistributionTransactionAndOtherCosts",)).items():
-                result[f"{start}|{end}"] = vals["DistributionTransactionAndOtherCosts"]
+            for (start, end), vals in _parse_instance(xml, EXTENSION_TAGS).items():
+                for name, value in vals.items():
+                    result[name][f"{start}|{end}"] = value
             time.sleep(0.4)  # SEC 요청 간격
         return result
 
-    raw = _cached("sec_distribution_costs_v2", go, refresh)
-    return {tuple(k.split("|")): v for k, v in raw.items()}
+    raw = _cached("sec_extension_tags", go, refresh)
+    return {name: {tuple(k.split("|")): v for k, v in per.items()}
+            for name, per in raw.items()}
+
+
+def _distribution_periods(refresh: bool = False) -> dict[tuple[str, str], float]:
+    """유통·거래비용의 (시작일, 종료일) -> 값."""
+    return _extension_periods(refresh)["DistributionTransactionAndOtherCosts"]
+
+
+def fetch_it_infrastructure(refresh: bool = False,
+                            derived: set | None = None) -> dict[Quarter, float]:
+    """분기별 IT 인프라 비용. 회사 확장 태그라 인스턴스에서 읽는다."""
+    return quarterly_from_periods(
+        _extension_periods(refresh)["InformationTechnologyInfrastructureCosts"],
+        derived)
 
 
 def fetch_distribution_costs(refresh: bool = False,

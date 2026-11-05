@@ -121,7 +121,7 @@ a { color: var(--blue); }
     약 63%가 유통비용으로 빠져나간다.
   </p>
   <p class="stamp">
-    자동 갱신 · 2026-11-05 02:38 UTC ·
+    자동 갱신 · 2026-11-05 11:15 UTC ·
     <a href="https://github.com/gwonyongjin94-ui/Circle-Revenue-structure">GitHub</a>
   </p>
 </header>
@@ -138,14 +138,14 @@ a { color: var(--blue); }
         </div>
         <div class="gauge-now">
           <div class="gauge-label">현재 주가</div>
-          <div class="gauge-price">$76.12</div>
-          <div class="gauge-verdict">밴드 안 (하단에서 24% 지점)</div>
+          <div class="gauge-price">$75.22</div>
+          <div class="gauge-verdict">밴드 안 (하단에서 18% 지점)</div>
         </div>
       </div>
       <div class="track">
         <div class="track-band" style="left:17.95%;width:64.10%"></div>
         <div class="track-mid" style="left:61.51%"></div>
-        <div class="track-now" style="left:33.11%"></div>
+        <div class="track-now" style="left:29.39%"></div>
       </div>
       <div class="track-axis">
         <span style="left:17.95%">$72</span>
@@ -163,14 +163,14 @@ a { color: var(--blue); }
         </div>
         <div class="gauge-now">
           <div class="gauge-label">현재 주가</div>
-          <div class="gauge-price">$76.12</div>
-          <div class="gauge-verdict">밴드 안 (하단에서 73% 지점)</div>
+          <div class="gauge-price">$75.22</div>
+          <div class="gauge-verdict">밴드 안 (하단에서 70% 지점)</div>
         </div>
       </div>
       <div class="track">
         <div class="track-band" style="left:17.95%;width:64.10%"></div>
         <div class="track-mid" style="left:47.54%"></div>
-        <div class="track-now" style="left:65.01%"></div>
+        <div class="track-now" style="left:62.72%"></div>
       </div>
       <div class="track-axis">
         <span style="left:17.95%">$58</span>
@@ -185,6 +185,8 @@ a { color: var(--blue); }
   $194M에서 $202M로 늘었다.
   그 결과 TTM 조정 영업이익은 $470M에서
   $369M로 줄었다.
+  그 증가가 어느 항목에서 오는지는 아래
+  <a href="#opex">영업비용 항목별 분해</a>에 있다.
 </div>
 <div class="note">
   이익 기준에는 단서가 둘 붙는다. 첫째, <strong>보고 영업이익</strong>으로는 밴드를
@@ -205,7 +207,7 @@ a { color: var(--blue); }
 </div>
 
 <h2>지금 상태</h2>
-<div class="tiles"><div class="tile"><div class="tile-label">USDC 유통량</div><div class="tile-value">$71B</div><div class="tile-note">2026-11-05</div></div><div class="tile"><div class="tile-label">시가총액</div><div class="tile-value">$20B</div><div class="tile-note">TTM 매출 6.8x</div></div><div class="tile"><div class="tile-label">2026Q4 총매출 추정</div><div class="tile-value">$776M</div><div class="tile-note">준비금 수익 $741M</div></div><div class="tile"><div class="tile-label">RLDC (Circle 몫)</div><div class="tile-value">$311M</div><div class="tile-note">유통비용 63% 차감 후</div></div><div class="tile"><div class="tile-label">분기 평균 단기금리</div><div class="tile-value">4.05%</div><div class="tile-note">3개월 국채</div></div><div class="tile"><div class="tile-label">준비금 익일물 비중</div><div class="tile-value">60%</div><div class="tile-note">펀드 $58B</div></div></div>
+<div class="tiles"><div class="tile"><div class="tile-label">USDC 유통량</div><div class="tile-value">$71B</div><div class="tile-note">2026-11-05</div></div><div class="tile"><div class="tile-label">시가총액</div><div class="tile-value">$19B</div><div class="tile-note">TTM 매출 6.8x</div></div><div class="tile"><div class="tile-label">2026Q4 총매출 추정</div><div class="tile-value">$776M</div><div class="tile-note">준비금 수익 $741M</div></div><div class="tile"><div class="tile-label">RLDC (Circle 몫)</div><div class="tile-value">$311M</div><div class="tile-note">유통비용 63% 차감 후</div></div><div class="tile"><div class="tile-label">분기 평균 단기금리</div><div class="tile-value">4.05%</div><div class="tile-note">3개월 국채</div></div><div class="tile"><div class="tile-label">준비금 익일물 비중</div><div class="tile-value">60%</div><div class="tile-note">펀드 $58B</div></div></div>
 
 <h2>분기 실적 — 모델 추정과 공시</h2>
 <div class="scroll">
@@ -228,47 +230,51 @@ a { color: var(--blue); }
 </div>
 
 <h2>차트</h2>
-<section class="chart">
+<section class="chart" id="valuation">
           <h3>주당가치 범위</h3>
           <p>과거 배수 범위가 함의하는 주당가치와 현재 주가</p>
           <a href="assets/valuation.png"><img src="assets/valuation.png" alt="주당가치 범위" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="earnings">
           <h3>이익 기준 밸류에이션</h3>
           <p>조정 영업이익 배수로 본 주당가치와 RLDC 기준 밴드의 차이</p>
           <a href="assets/earnings.png"><img src="assets/earnings.png" alt="이익 기준 밸류에이션" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="opex">
+          <h3>영업비용 항목별 분해</h3>
+          <p>영업비용 증가가 어느 항목에서 오는지, 경상 RLDC를 얼마나 가져가는지</p>
+          <a href="assets/opex_breakdown.png"><img src="assets/opex_breakdown.png" alt="영업비용 항목별 분해" loading="lazy"></a>
+        </section><section class="chart" id="volatility">
           <h3>변동성과 향후 주가 분포</h3>
           <p>연율 변동성, 일간 수익률 분포, 향후 분포에 겹친 밸류에이션 밴드</p>
           <a href="assets/volatility.png"><img src="assets/volatility.png" alt="변동성과 향후 주가 분포" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="revenue_model">
           <h3>분기 매출 — 모델 vs 공시</h3>
           <p>잔액과 금리로 추정한 값을 공시 실적과 대조한다</p>
           <a href="assets/revenue_model.png"><img src="assets/revenue_model.png" alt="분기 매출 — 모델 vs 공시" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="price_vs_revenue">
           <h3>주가 vs 매출</h3>
           <p>주가가 빠지는 동안 매출이 어떻게 움직였는지, 그리고 배수 변화</p>
           <a href="assets/price_vs_revenue.png"><img src="assets/price_vs_revenue.png" alt="주가 vs 매출" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="reserves">
           <h3>준비금 구성과 만기 구조</h3>
           <p>매출이 금리를 얼마나 빨리 따라가는지를 결정하는 구조</p>
           <a href="assets/reserves.png"><img src="assets/reserves.png" alt="준비금 구성과 만기 구조" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="distribution_costs">
           <h3>유통비용 상대방별 구성</h3>
           <p>Coinbase 실효 배분율과 그 밖 파트너 비중</p>
           <a href="assets/distribution_costs.png"><img src="assets/distribution_costs.png" alt="유통비용 상대방별 구성" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="supply_vs_rate_placebo">
           <h3>발행잔액 vs 기준금리 (대조군 포함)</h3>
           <p>금리가 발행잔액을 움직였는지 USDT 대조군으로 검증한다</p>
           <a href="assets/supply_vs_rate_placebo.png"><img src="assets/supply_vs_rate_placebo.png" alt="발행잔액 vs 기준금리 (대조군 포함)" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="market_share">
           <h3>시장 점유율</h3>
           <p>USDC·USDT 점유율과 전체 시장 규모</p>
           <a href="assets/market_share.png"><img src="assets/market_share.png" alt="시장 점유율" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="other_revenue">
           <h3>기타 매출</h3>
           <p>준비금 수익 외 매출의 추이와 구성</p>
           <a href="assets/other_revenue.png"><img src="assets/other_revenue.png" alt="기타 매출" loading="lazy"></a>
-        </section><section class="chart">
+        </section><section class="chart" id="circle_supply">
           <h3>발행 코인 유통량</h3>
           <p>Circle이 발행하는 코인별 유통량</p>
           <a href="assets/circle_supply.png"><img src="assets/circle_supply.png" alt="발행 코인 유통량" loading="lazy"></a>

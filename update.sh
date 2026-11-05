@@ -28,13 +28,14 @@ run price_vs_revenue.py
 run other_revenue.py
 run valuation.py
 run earnings.py
+run opex_breakdown.py
 run volatility.py
 run snapshot.py
 
 mkdir -p assets
 for f in circle_supply supply_vs_rate supply_vs_rate_placebo reserves market_share \
          revenue_model distribution_costs price_vs_revenue other_revenue \
-         valuation earnings volatility; do
+         valuation earnings opex_breakdown volatility; do
   [ -f "output/$f.png" ] && cp "output/$f.png" "assets/$f.png"
 done
 [ -f output/usdc_only.png ] && cp output/usdc_only.png assets/usdc_supply.png

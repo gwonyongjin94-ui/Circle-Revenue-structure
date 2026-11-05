@@ -63,6 +63,8 @@ def collect(refresh: bool = False) -> dict:
     s["band_quarters"] = len(reported)
     s["last_reported"] = max(r.quarter for r in results if r.reserve_income is not None)
     s["results"] = results
+    errors = [abs(r.error) for r in results if r.error is not None]
+    s["mean_error"] = sum(errors) / len(errors) if errors else 0.0
     return s
 
 
@@ -142,11 +144,15 @@ def quarters_table(s: dict) -> str:
         actual = cd.human(r.reserve_income) if r.reserve_income is not None else "—"
         err = f"{r.error:+.1f}%" if r.error is not None else "—"
         mark = ' class="pending"' if r.reserve_income is None else ""
+        rev, rldc = cd.human(r.revenue), cd.human(r.rldc)
+        if r.one_off_rev:
+            rev += ' <span class="flag">일회성</span>'
+            rldc += ' <span class="flag">일회성</span>'
         rows.append(
             f"<tr{mark}><td>{q}</td><td>{cd.human(r.avg_aum)}</td>"
             f"<td>{r.avg_rate:.2f}%</td><td>{cd.human(r.modeled_ri)}</td>"
-            f"<td>{actual}</td><td>{err}</td><td>{cd.human(r.revenue)}</td>"
-            f"<td>{cd.human(r.rldc)}</td></tr>")
+            f"<td>{actual}</td><td>{err}</td><td>{rev}</td>"
+            f"<td>{rldc}</td></tr>")
     return f"""
     <table>
       <thead><tr><th>분기</th><th>평균 잔액</th><th>금리</th><th>모델 준비금수익</th>
@@ -157,6 +163,12 @@ def quarters_table(s: dict) -> str:
 
 def render(s: dict) -> str:
     lo, mid, hi = s["value_band"]
+    one_off_note = "".join(
+        f" {r.quarter[0]}Q{r.quarter[1]} 총매출에는 {r.one_off_rev[1]} "
+        f"{cd.human(r.one_off_rev[0])}이 들어 있다 — 이를 빼면 경상 매출 "
+        f"{cd.human(r.recurring_revenue)}, 경상 RLDC {cd.human(r.recurring_rldc)}이고, "
+        f"위 밴드와 추정에는 이 경상 기준을 썼다."
+        for r in s["results"] if r.one_off_rev)
     q = f"{s['quarter'][0]}Q{s['quarter'][1]}"
     last = f"{s['last_reported'][0]}Q{s['last_reported'][1]}"
     sections = "".join(
@@ -259,6 +271,11 @@ tr.pending td {{ color: var(--ink-2); font-style: italic; }}
   width: 100%; height: auto; display: block; border-radius: 12px;
   border: 1px solid var(--line); background: var(--surface);
 }}
+.flag {{
+  display: inline-block; font-size: 11px; font-weight: 600;
+  color: var(--orange); border: 1px solid var(--orange);
+  border-radius: 5px; padding: 0 4px; margin-left: 4px; vertical-align: 1px;
+}}
 .note {{
   background: var(--surface); border: 1px solid var(--line);
   border-left: 3px solid var(--orange);
@@ -304,7 +321,15 @@ a {{ color: var(--blue); }}
 <div class="scroll">{quarters_table(s)}</div>
 <div class="note">
   모델은 잔액과 금리만으로 준비금 수익을 계산한다. 공시가 나온 분기에서
-  절대오차 평균 2% 수준이다. 기울임체 행은 아직 공시 전이라 모델값이다.
+  절대오차 평균 {s['mean_error']:.1f}% 수준이다. 기울임체 행은 아직 공시 전이라 모델값이다.
+  {one_off_note}
+</div>
+<div class="note">
+  <strong>모델이 최근 3개 분기 연속 과대추정</strong>하고 있다 —
+  실현 수익률 ÷ 3개월 국채금리 배수가 0.978 → 0.963 → 0.935로 내려갔다.
+  준비금 수익에는 Circle Reserve Fund 밖에 둔 국채의 <strong>평가손익</strong>이
+  함께 들어가고, 금리가 오르는 구간에서는 이 평가손이 이자수익 증가를 일부
+  깎아먹는다. 금리 상승이 곧바로 같은 폭의 수익 증가로 이어지지 않는다는 뜻이다.
 </div>
 
 <h2>차트</h2>

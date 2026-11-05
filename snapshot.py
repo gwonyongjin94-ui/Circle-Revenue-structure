@@ -34,7 +34,9 @@ def collect(refresh: bool = False) -> dict:
 
     current = results[-1]
     spot, count = prices[-1][1], shares[-1][1]
-    derated = [h for h in hist if h[0] >= DERATED_FROM]
+    # 배수는 공시가 나온 분기에서만 (valuation.history 설명 참조)
+    derated = [h for h in history(results, prices, shares, reported_only=True)
+               if h[0] >= DERATED_FROM]
     rldc_band = band([c / l for _, c, _, l in derated])
     as_of, holdings = cd.fetch_reserves(refresh)
     total = sum(h.market_value for h in holdings)

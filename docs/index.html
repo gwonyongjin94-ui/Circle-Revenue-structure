@@ -91,6 +91,11 @@ tr.pending td { color: var(--ink-2); font-style: italic; }
   width: 100%; height: auto; display: block; border-radius: 12px;
   border: 1px solid var(--line); background: var(--surface);
 }
+.flag {
+  display: inline-block; font-size: 11px; font-weight: 600;
+  color: var(--orange); border: 1px solid var(--orange);
+  border-radius: 5px; padding: 0 4px; margin-left: 4px; vertical-align: 1px;
+}
 .note {
   background: var(--surface); border: 1px solid var(--line);
   border-left: 3px solid var(--orange);
@@ -112,7 +117,7 @@ a { color: var(--blue); }
     약 63%가 유통비용으로 빠져나간다.
   </p>
   <p class="stamp">
-    자동 갱신 · 2026-11-04 02:29 UTC ·
+    자동 갱신 · 2026-11-05 01:58 UTC ·
     <a href="https://github.com/gwonyongjin94-ui/Circle-Revenue-structure">GitHub</a>
   </p>
 </header>
@@ -123,27 +128,27 @@ a { color: var(--blue); }
       <div class="gauge-head">
         <div>
           <div class="gauge-label">주당가치 범위</div>
-          <div class="gauge-range">$75 <span>~</span> $91</div>
-          <div class="gauge-sub">중앙 $81</div>
+          <div class="gauge-range">$72 <span>~</span> $88</div>
+          <div class="gauge-sub">중앙 $83</div>
         </div>
         <div class="gauge-now">
           <div class="gauge-label">현재 주가</div>
           <div class="gauge-price">$75.22</div>
-          <div class="gauge-verdict">밴드 안 (하단에서 3% 지점)</div>
+          <div class="gauge-verdict">밴드 안 (하단에서 18% 지점)</div>
         </div>
       </div>
       <div class="track">
         <div class="track-band" style="left:17.95%;width:64.10%"></div>
-        <div class="track-mid" style="left:42.77%"></div>
-        <div class="track-now" style="left:19.81%"></div>
+        <div class="track-mid" style="left:61.51%"></div>
+        <div class="track-now" style="left:29.39%"></div>
       </div>
       <div class="track-axis">
-        <span style="left:17.95%">$75</span>
-        <span style="left:82.05%">$91</span>
+        <span style="left:17.95%">$72</span>
+        <span style="left:82.05%">$88</span>
       </div>
     </div>
 <div class="note">
-  밴드는 <strong>공시가 나온 3개 분기</strong>(2025Q4~2026Q2)의
+  밴드는 <strong>공시가 나온 4개 분기</strong>(2025Q4~2026Q3)의
   시총/TTM RLDC 배수 범위(16.0~19.5x)를
   현재 TTM RLDC $1.2B에 적용한 값이다.
   재평가가 끝난 구간만 쓰며, 상장 직후의 51.7x는 제외한다.
@@ -153,18 +158,26 @@ a { color: var(--blue); }
 </div>
 
 <h2>지금 상태</h2>
-<div class="tiles"><div class="tile"><div class="tile-label">USDC 유통량</div><div class="tile-value">$71B</div><div class="tile-note">2026-11-04</div></div><div class="tile"><div class="tile-label">시가총액</div><div class="tile-value">$19B</div><div class="tile-note">TTM 매출 6.6x</div></div><div class="tile"><div class="tile-label">2026Q4 총매출 추정</div><div class="tile-value">$777M</div><div class="tile-note">준비금 수익 $742M</div></div><div class="tile"><div class="tile-label">RLDC (Circle 몫)</div><div class="tile-value">$311M</div><div class="tile-note">유통비용 63% 차감 후</div></div><div class="tile"><div class="tile-label">분기 평균 단기금리</div><div class="tile-value">4.05%</div><div class="tile-note">3개월 국채</div></div><div class="tile"><div class="tile-label">준비금 익일물 비중</div><div class="tile-value">57%</div><div class="tile-note">펀드 $58B</div></div></div>
+<div class="tiles"><div class="tile"><div class="tile-label">USDC 유통량</div><div class="tile-value">$71B</div><div class="tile-note">2026-11-05</div></div><div class="tile"><div class="tile-label">시가총액</div><div class="tile-value">$19B</div><div class="tile-note">TTM 매출 6.8x</div></div><div class="tile"><div class="tile-label">2026Q4 총매출 추정</div><div class="tile-value">$776M</div><div class="tile-note">준비금 수익 $741M</div></div><div class="tile"><div class="tile-label">RLDC (Circle 몫)</div><div class="tile-value">$311M</div><div class="tile-note">유통비용 63% 차감 후</div></div><div class="tile"><div class="tile-label">분기 평균 단기금리</div><div class="tile-value">4.05%</div><div class="tile-note">3개월 국채</div></div><div class="tile"><div class="tile-label">준비금 익일물 비중</div><div class="tile-value">60%</div><div class="tile-note">펀드 $58B</div></div></div>
 
 <h2>분기 실적 — 모델 추정과 공시</h2>
 <div class="scroll">
     <table>
       <thead><tr><th>분기</th><th>평균 잔액</th><th>금리</th><th>모델 준비금수익</th>
       <th>공시</th><th>오차</th><th>총매출</th><th>RLDC</th></tr></thead>
-      <tbody><tr><td>2025Q3</td><td>$67B</td><td>4.10%</td><td>$697M</td><td>$711M</td><td>-2.0%</td><td>$740M</td><td>$292M</td></tr><tr><td>2025Q4</td><td>$76B</td><td>3.73%</td><td>$713M</td><td>$733M</td><td>-2.8%</td><td>$770M</td><td>$309M</td></tr><tr><td>2026Q1</td><td>$75B</td><td>3.59%</td><td>$667M</td><td>$653M</td><td>+2.2%</td><td>$694M</td><td>$287M</td></tr><tr><td>2026Q2</td><td>$77B</td><td>3.62%</td><td>$693M</td><td>$668M</td><td>+3.8%</td><td>$701M</td><td>$289M</td></tr><tr class="pending"><td>2026Q3</td><td>$74B</td><td>3.80%</td><td>$704M</td><td>—</td><td>—</td><td>$738M</td><td>$296M</td></tr><tr class="pending"><td>2026Q4</td><td>$73B</td><td>4.05%</td><td>$742M</td><td>—</td><td>—</td><td>$777M</td><td>$311M</td></tr></tbody>
+      <tbody><tr><td>2025Q3</td><td>$67B</td><td>4.10%</td><td>$697M</td><td>$711M</td><td>-2.0%</td><td>$740M</td><td>$292M</td></tr><tr><td>2025Q4</td><td>$76B</td><td>3.73%</td><td>$713M</td><td>$733M</td><td>-2.8%</td><td>$770M</td><td>$309M</td></tr><tr><td>2026Q1</td><td>$75B</td><td>3.59%</td><td>$667M</td><td>$653M</td><td>+2.2%</td><td>$694M</td><td>$287M</td></tr><tr><td>2026Q2</td><td>$77B</td><td>3.62%</td><td>$693M</td><td>$668M</td><td>+3.8%</td><td>$701M</td><td>$289M</td></tr><tr><td>2026Q3</td><td>$74B</td><td>3.80%</td><td>$704M</td><td>$658M</td><td>+7.0%</td><td>$865M <span class="flag">일회성</span></td><td>$453M <span class="flag">일회성</span></td></tr><tr class="pending"><td>2026Q4</td><td>$73B</td><td>4.05%</td><td>$741M</td><td>—</td><td>—</td><td>$776M</td><td>$311M</td></tr></tbody>
     </table></div>
 <div class="note">
   모델은 잔액과 금리만으로 준비금 수익을 계산한다. 공시가 나온 분기에서
-  절대오차 평균 2% 수준이다. 기울임체 행은 아직 공시 전이라 모델값이다.
+  절대오차 평균 2.6% 수준이다. 기울임체 행은 아직 공시 전이라 모델값이다.
+   2026Q3 총매출에는 ARC 토큰 프리세일 수익 인식 (총 조달 $242M 중) $182M이 들어 있다 — 이를 빼면 경상 매출 $683M, 경상 RLDC $271M이고, 위 밴드와 추정에는 이 경상 기준을 썼다.
+</div>
+<div class="note">
+  <strong>모델이 최근 3개 분기 연속 과대추정</strong>하고 있다 —
+  실현 수익률 ÷ 3개월 국채금리 배수가 0.978 → 0.963 → 0.935로 내려갔다.
+  준비금 수익에는 Circle Reserve Fund 밖에 둔 국채의 <strong>평가손익</strong>이
+  함께 들어가고, 금리가 오르는 구간에서는 이 평가손이 이자수익 증가를 일부
+  깎아먹는다. 금리 상승이 곧바로 같은 폭의 수익 증가로 이어지지 않는다는 뜻이다.
 </div>
 
 <h2>차트</h2>

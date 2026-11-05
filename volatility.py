@@ -232,7 +232,10 @@ def main(argv=None) -> int:
         cd.fetch_distribution_costs(args.refresh, derived), derived))
     shares = cd.fetch_shares_outstanding(args.refresh)
     hist = history(results, prices, shares)
-    derated = [h for h in hist if h[0] >= DERATED_FROM]
+    # 배수는 공시가 나온 분기에서만 뽑는다 — 진행 분기의 '분기말 주가'는
+    # 오늘 주가라서, 넣으면 밴드 하단이 현재가에 못 박힌다 (valuation.history 참조)
+    derated = [h for h in history(results, prices, shares, reported_only=True)
+               if h[0] >= DERATED_FROM]
     rldc_band = band([c / l for _, c, _, l in derated])
     count = shares[-1][1]
     value_band = tuple(hist[-1][3] * m / count for m in rldc_band)

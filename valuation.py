@@ -46,6 +46,10 @@ DERATED_FROM = (2025, 4)
 def history(results, prices, shares, reported_only: bool = False):
     """(분기, 시가총액, TTM 매출, TTM RLDC) — TTM 4개 분기가 다 있는 분기만.
 
+    매출과 RLDC는 경상 기준이다. ARC 토큰 프리세일처럼 반복되지 않는 매출을
+    넣으면 배수의 분모가 한 분기만 부풀어, 배수 범위와 현재 TTM이 서로 다른
+    것을 재게 된다.
+
     reported_only=True 면 공시가 나온 분기만 남긴다. 배수 범위를 뽑을 때 쓴다 —
     진행 중 분기는 분기말 주가를 구할 수 없어 오늘 주가를 쓰는데, 그러면 밴드
     하단이 현재가에 못 박혀 밴드가 자기 자신을 참조하게 된다.
@@ -68,7 +72,8 @@ def history(results, prices, shares, reported_only: bool = False):
         if not (price and count):
             continue
         out.append((r.quarter, price * count,
-                    sum(x.revenue for x in window), sum(x.rldc for x in window)))
+                    sum(x.recurring_revenue for x in window),
+                    sum(x.recurring_rldc for x in window)))
     return out
 
 

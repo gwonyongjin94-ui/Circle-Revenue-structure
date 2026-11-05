@@ -49,6 +49,16 @@ ONE_OFF_COSTS: dict[cd.Quarter, tuple[float, str]] = {
     (2024, 4): (60.3e6, "Binance 일회성 선급금 (2024년 11월 계약)"),
 }
 
+# 공시에서 확인한 일회성 매출. 기타매출 비율을 왜곡하므로 별도로 표시하고
+# 진행 분기 추정의 기준에서도 뺀다.
+# 출처: Circle 2026Q3 10-Q 주석 11 — "Other revenue during the three and nine
+# months ended September 30, 2026 includes ARC token presale revenue of
+# $181.8 million reflecting the Company's progress in satisfying its
+# performance obligation." 총 조달 $242.2M 중 잔액 $60.4M은 이연매출로 남았다.
+ONE_OFF_REVENUE: dict[cd.Quarter, tuple[float, str]] = {
+    (2026, 3): (181.8e6, "ARC 토큰 프리세일 수익 인식 (총 조달 $242M 중)"),
+}
+
 RATE_STEPS = (-0.50, -0.25, 0.0, 0.25, 0.50)
 AUM_STEPS = (-0.10, 0.0, 0.10)
 
@@ -101,6 +111,21 @@ class QuarterResult:
         return ONE_OFF_COSTS.get(self.quarter)
 
     @property
+    def one_off_rev(self) -> tuple[float, str] | None:
+        return ONE_OFF_REVENUE.get(self.quarter)
+
+    @property
+    def recurring_revenue(self) -> float:
+        """일회성 매출을 뺀 경상 매출."""
+        amount = self.one_off_rev[0] if self.one_off_rev else 0.0
+        return self.revenue - amount
+
+    @property
+    def recurring_rldc(self) -> float:
+        amount = self.one_off_rev[0] if self.one_off_rev else 0.0
+        return self.rldc - amount
+
+    @property
     def underlying_ratio(self) -> float:
         """일회성 항목을 뺀 경상 유통비용 비율 (준비금 수익 기준)."""
         amount = self.one_off[0] if self.one_off else 0.0
@@ -128,7 +153,7 @@ def build(supply, rates, reserve_income, revenue, distribution, derived=()) -> l
         by_rate.setdefault(cd.quarter_of(day), []).append(value)
 
     # 진행 분기에 쓸 비율. 복원 분기와 일회성이 낀 분기는 기준에서 뺀다
-    skip = set(derived) | set(ONE_OFF_COSTS)
+    skip = set(derived) | set(ONE_OFF_COSTS) | set(ONE_OFF_REVENUE)
     dist_ratios = {q: distribution[q] / reserve_income[q]
                    for q in distribution if q in reserve_income}
     other_ratios = {q: (revenue[q] - reserve_income[q]) / reserve_income[q]
@@ -342,6 +367,8 @@ def main(argv=None) -> int:
         err = f"{r.error:+.1f}%" if r.error is not None else "—"
         tail = ("  (진행 중, 비율 가정)" if r.assumed
                 else "  (차감으로 복원)" if r.derived else "")
+        if r.one_off_rev:
+            tail += "  (일회성 매출 포함)"
         print(f"  {q:7}{r.avg_aum / 1e9:9.1f}B{r.avg_rate:7.2f}"
               f"{cd.human(r.modeled_ri):>9}{ri:>12}{err:>8}"
               f"{cd.human(r.revenue):>10}{cd.human(r.dist_amount):>10}"
@@ -352,6 +379,15 @@ def main(argv=None) -> int:
         print(f"\n  * {r.quarter[0]}Q{r.quarter[1]} 유통비중 {r.dist_ratio * 100:.1f}%에는 "
               f"{note} {cd.human(amount)}이 포함돼 있다.\n"
               f"    이를 빼면 {r.underlying_ratio * 100:.1f}%로 인접 분기 수준이 된다.")
+
+    for r in (x for x in shown if x.one_off_rev):
+        amount, note = r.one_off_rev
+        print(f"\n  * {r.quarter[0]}Q{r.quarter[1]} 총매출 {cd.human(r.revenue)}에는 "
+              f"{note} {cd.human(amount)}이 포함돼 있다.\n"
+              f"    이를 빼면 경상 매출 {cd.human(r.recurring_revenue)}, "
+              f"경상 RLDC {cd.human(r.recurring_rldc)}이다.\n"
+              f"    유통비용은 준비금 수익에만 걸리므로 이 매출은 전액 Circle 몫이지만,\n"
+              f"    반복되지 않는다 — 진행 분기 추정의 기준에서 제외했다.")
 
     errors = [r.error for r in shown if r.error is not None]
     if errors:
